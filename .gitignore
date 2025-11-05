@@ -10,8 +10,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Only ignore root-level Python build libs; allow nested project libs like frontend/lib
+/lib/
+/lib64/
 parts/
 sdist/
 var/
