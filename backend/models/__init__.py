@@ -158,3 +158,35 @@ class QuarterlyCompliance(SQLModel, table=True):
     is_compliant: Optional[int] = None  # 1: Compliant, 0: Not Compliant
     compliance_status: str  # Values: "Compliant", "Not Compliant"
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+
+class Exception(SQLModel, table=True):
+    """Exception model for managing employee exceptions.
+    
+    Format: {period}_{number}_day
+    - period: weekly, monthly, or quarterly
+    - number: integer value
+    Example: weekly_2_day, monthly_4_day, quarterly_6_day
+    """
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+
+class ExceptionCreate(SQLModel):
+    """Model for creating a new exception.
+    
+    Format: {period}_{number}_day
+    - period: weekly, monthly, or quarterly
+    - number: integer value
+    """
+    
+    name: str
+
+
+class ExceptionUpdate(SQLModel):
+    """Model for updating an exception."""
+    
+    name: Optional[str] = None

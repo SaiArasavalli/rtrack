@@ -9,7 +9,7 @@ from sqlalchemy import text
 from backend.database import create_db_and_tables, engine
 from backend.config import settings
 from backend.utils.logger import logger
-from backend.routes import auth, employees, attendance, compliance
+from backend.routes import auth, employees, attendance, compliance, exceptions
 
 
 @asynccontextmanager
@@ -140,6 +140,7 @@ app.include_router(auth.router)
 app.include_router(employees.router)
 app.include_router(attendance.router)
 app.include_router(compliance.router)
+app.include_router(exceptions.router)
 
 
 if __name__ == "__main__":

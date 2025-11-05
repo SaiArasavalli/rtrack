@@ -101,13 +101,15 @@ export default function UploadPage() {
   return (
     <ProtectedRoute>
       <AdminRoute>
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-2xl mx-auto">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+          <Card className="max-w-2xl mx-auto border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
             <CardHeader>
-              <CardTitle className="text-3xl font-bold">Upload Employee Data</CardTitle>
-              <CardDescription className="mt-2">
+              <CardTitle className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2">
+                Upload Employee Data
+              </CardTitle>
+              <CardDescription className="mt-2 text-base">
                 Upload an Excel file to replace all existing employee records in the database
               </CardDescription>
             </CardHeader>
@@ -198,7 +200,7 @@ export default function UploadPage() {
                 <Button
                   onClick={handleUpload}
                   disabled={!file || uploading}
-                  className="flex-1"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-11"
                 >
                   {uploading ? (
                     <>
@@ -215,6 +217,7 @@ export default function UploadPage() {
                 <Button
                   variant="outline"
                   onClick={() => window.location.href = '/employees'}
+                  className="h-11 border-2"
                 >
                   View Employees
                 </Button>

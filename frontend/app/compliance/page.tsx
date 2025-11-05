@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiClient, type ComplianceResponse, type ComplianceEmployee, type ComplianceWeek, type MonthlyComplianceResponse, type MonthlyComplianceEmployee, type MonthlyComplianceMonth, type QuarterlyComplianceResponse, type QuarterlyComplianceEmployee, type QuarterlyComplianceQuarter } from '@/lib/api';
 import { toast } from 'sonner';
 import { Calendar, CheckCircle2, XCircle, AlertCircle, Loader2, Search } from 'lucide-react';
+import { CalculateDialog } from '@/components/calculate-dialog';
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -53,6 +54,10 @@ export default function CompliancePage() {
   const [quarterlyYear, setQuarterlyYear] = useState<number | undefined>(new Date().getFullYear());
   const [quarterlyStatus, setQuarterlyStatus] = useState<string>('All');
   const [quarterlySearchQuery, setQuarterlySearchQuery] = useState<string>('');
+
+  // Calculate dialog state
+  const [calculateDialogOpen, setCalculateDialogOpen] = useState(false);
+  const [calculateDialogType, setCalculateDialogType] = useState<'monthly' | 'quarterly'>('monthly');
 
   // Load data based on active tab
   useEffect(() => {
@@ -114,45 +119,33 @@ export default function CompliancePage() {
     }
   };
 
-  const handleCalculateMonthly = async () => {
-    try {
-      const year = monthlyYear ?? new Date().getFullYear();
-      const input = window.prompt('Enter month to calculate (1-12):', String(new Date().getMonth() + 1));
-      if (!input) return;
-      const monthNum = parseInt(input);
-      if (Number.isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-        toast.error('Please enter a valid month between 1 and 12');
-        return;
-      }
-      const res = await apiClient.calculateMonthlyCompliance(year, monthNum);
-      toast.success(`${res.message}. Calculated: ${res.records_calculated}`);
-      // Stay on page; refresh data and switch to Monthly tab
-      setActiveTab('monthly');
-      await loadMonthlyCompliance();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to calculate monthly compliance';
-      toast.error(msg);
-    }
+  const handleCalculateMonthly = () => {
+    setCalculateDialogType('monthly');
+    setCalculateDialogOpen(true);
   };
 
-  const handleCalculateQuarterly = async () => {
+  const handleCalculateQuarterly = () => {
+    setCalculateDialogType('quarterly');
+    setCalculateDialogOpen(true);
+  };
+
+  const handleCalculate = async (year: number, value: number) => {
     try {
-      const year = quarterlyYear ?? new Date().getFullYear();
-      const input = window.prompt('Enter quarter to calculate (1-4):', '1');
-      if (!input) return;
-      const qNum = parseInt(input);
-      if (Number.isNaN(qNum) || qNum < 1 || qNum > 4) {
-        toast.error('Please enter a valid quarter between 1 and 4');
-        return;
+      if (calculateDialogType === 'monthly') {
+        const res = await apiClient.calculateMonthlyCompliance(year, value);
+        toast.success(`${res.message}. Calculated: ${res.records_calculated}`);
+        setActiveTab('monthly');
+        await loadMonthlyCompliance();
+      } else {
+        const res = await apiClient.calculateQuarterlyCompliance(year, value);
+        toast.success(`${res.message}. Calculated: ${res.records_calculated}`);
+        setActiveTab('quarterly');
+        await loadQuarterlyCompliance();
       }
-      const res = await apiClient.calculateQuarterlyCompliance(year, qNum);
-      toast.success(`${res.message}. Calculated: ${res.records_calculated}`);
-      // Stay on page; refresh data and switch to Quarterly tab
-      setActiveTab('quarterly');
-      await loadQuarterlyCompliance();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to calculate quarterly compliance';
+      const msg = e instanceof Error ? e.message : `Failed to calculate ${calculateDialogType} compliance`;
       toast.error(msg);
+      throw e;
     }
   };
 
@@ -265,15 +258,17 @@ export default function CompliancePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Card>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+          <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-3xl font-bold">Compliance</CardTitle>
-                  <CardDescription className="mt-2">
+                  <CardTitle className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2">
+                    Compliance
+                  </CardTitle>
+                  <CardDescription className="mt-2 text-base">
                     Employee compliance tracking by week, month, and quarter
                   </CardDescription>
                 </div>
@@ -358,22 +353,33 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={loadWeeklyCompliance} variant="outline">
+                    <Button onClick={loadWeeklyCompliance} variant="outline" className="h-11 border-2">
                       Refresh
                     </Button>
                   </div>
 
                   {weeklyLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                      <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+                        <p className="text-sm text-muted-foreground font-medium">Loading compliance data...</p>
+                      </div>
                     </div>
                   ) : !weeklyCompliance || weeklyCompliance.employees.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-500 dark:text-slate-400">No weekly compliance records found.</p>
+                    <div className="text-center py-16">
+                      <div className="relative mb-4 inline-block">
+                        <CheckCircle2 className="h-16 w-16 text-muted-foreground/40" />
+                        <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No weekly compliance records found</h4>
                     </div>
                   ) : filterWeeklyEmployees(weeklyCompliance.employees).length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-500 dark:text-slate-400">No employees match your search criteria.</p>
+                    <div className="text-center py-16">
+                      <div className="relative mb-4 inline-block">
+                        <Search className="h-16 w-16 text-muted-foreground/40" />
+                        <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No employees match your search criteria</h4>
                     </div>
                   ) : (
                     <div className="space-y-6">
@@ -577,13 +583,13 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={loadMonthlyCompliance} variant="outline">
+                    <Button onClick={loadMonthlyCompliance} variant="outline" className="h-11 border-2">
                       Refresh
                     </Button>
                     {isAdmin && (
                       <Button 
                         onClick={handleCalculateMonthly}
-                        variant="default"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-11"
                       >
                         Calculate New
                       </Button>
@@ -592,15 +598,26 @@ export default function CompliancePage() {
 
                   {monthlyLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                      <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+                        <p className="text-sm text-muted-foreground font-medium">Loading compliance data...</p>
+                      </div>
                     </div>
                   ) : !monthlyCompliance || monthlyCompliance.employees.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-500 dark:text-slate-400">No monthly compliance records found.</p>
+                    <div className="text-center py-16">
+                      <div className="relative mb-4 inline-block">
+                        <CheckCircle2 className="h-16 w-16 text-muted-foreground/40" />
+                        <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No monthly compliance records found</h4>
                     </div>
                   ) : filterMonthlyEmployees(monthlyCompliance.employees).length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-500 dark:text-slate-400">No employees match your search criteria.</p>
+                    <div className="text-center py-16">
+                      <div className="relative mb-4 inline-block">
+                        <Search className="h-16 w-16 text-muted-foreground/40" />
+                        <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No employees match your search criteria</h4>
                     </div>
                   ) : (
                     <div className="space-y-6">
@@ -804,13 +821,13 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={loadQuarterlyCompliance} variant="outline">
+                    <Button onClick={loadQuarterlyCompliance} variant="outline" className="h-11 border-2">
                       Refresh
                     </Button>
                     {isAdmin && (
                       <Button 
                         onClick={handleCalculateQuarterly}
-                        variant="default"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-11"
                       >
                         Calculate New
                       </Button>
@@ -819,15 +836,26 @@ export default function CompliancePage() {
 
                   {quarterlyLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+                      <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+                        <p className="text-sm text-muted-foreground font-medium">Loading compliance data...</p>
+                      </div>
                     </div>
                   ) : !quarterlyCompliance || quarterlyCompliance.employees.length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-500 dark:text-slate-400">No quarterly compliance records found.</p>
+                    <div className="text-center py-16">
+                      <div className="relative mb-4 inline-block">
+                        <CheckCircle2 className="h-16 w-16 text-muted-foreground/40" />
+                        <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No quarterly compliance records found</h4>
                     </div>
                   ) : filterQuarterlyEmployees(quarterlyCompliance.employees).length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-slate-500 dark:text-slate-400">No employees match your search criteria.</p>
+                    <div className="text-center py-16">
+                      <div className="relative mb-4 inline-block">
+                        <Search className="h-16 w-16 text-muted-foreground/40" />
+                        <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full"></div>
+                      </div>
+                      <h4 className="text-lg font-semibold text-foreground mb-2">No employees match your search criteria</h4>
                     </div>
                   ) : (
                     <div className="space-y-6">
@@ -980,6 +1008,14 @@ export default function CompliancePage() {
               </Tabs>
             </CardContent>
           </Card>
+          
+          <CalculateDialog
+            open={calculateDialogOpen}
+            onOpenChange={setCalculateDialogOpen}
+            type={calculateDialogType}
+            year={calculateDialogType === 'monthly' ? (monthlyYear ?? new Date().getFullYear()) : (quarterlyYear ?? new Date().getFullYear())}
+            onCalculate={handleCalculate}
+          />
         </div>
       </div>
     </ProtectedRoute>

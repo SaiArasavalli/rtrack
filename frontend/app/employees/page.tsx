@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { apiClient, type Employee } from '@/lib/api';
 import { toast } from 'sonner';
 import { EmployeeDialog } from '@/components/employee-dialog';
-import { Upload, Plus, Trash2, Edit, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Upload, Plus, Trash2, Edit, Search, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -78,7 +78,7 @@ export default function EmployeesPage() {
       }
     });
     const list: string[] = ['All'];
-    if (hasDefault) list.push('Default');
+    if (hasDefault) list.push('default');
     return [...list, ...Array.from(set).sort()];
   }, [employees]);
 
@@ -96,7 +96,7 @@ export default function EmployeesPage() {
       const empException = (emp.exception ?? '').trim();
       const matchesException = (
         exceptionFilter === 'All' ||
-        (exceptionFilter === 'Default' && empException === '') ||
+        (exceptionFilter === 'default' && empException === '') ||
         empException === exceptionFilter
       );
 
@@ -149,24 +149,26 @@ export default function EmployeesPage() {
   return (
     <ProtectedRoute>
       <AdminRoute>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Card>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+          <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <CardTitle className="text-3xl font-bold">Employees</CardTitle>
-                  <CardDescription className="mt-2">
+                  <CardTitle className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2">
+                    Employees
+                  </CardTitle>
+                  <CardDescription className="mt-2 text-base">
                     Manage employee records ({filteredEmployees.length} of {employees.length} total)
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => window.location.href = '/upload'}>
+                  <Button variant="outline" onClick={() => window.location.href = '/upload'} className="h-11 border-2">
                     <Upload className="mr-2 h-4 w-4" />
                     Upload Excel
                   </Button>
-                  <Button onClick={handleCreate}>
+                  <Button onClick={handleCreate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-11">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Employee
                   </Button>
@@ -237,15 +239,22 @@ export default function EmployeesPage() {
               </div>
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="text-slate-500">Loading employees...</div>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                    <p className="text-sm text-muted-foreground font-medium">Loading employees...</p>
+                  </div>
                 </div>
               ) : filteredEmployees.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <p className="text-slate-500 mb-4">
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="relative mb-4">
+                    <Users className="h-16 w-16 text-muted-foreground/40" />
+                    <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full"></div>
+                  </div>
+                  <h4 className="text-lg font-semibold text-foreground mb-2">
                     {searchQuery ? 'No employees found matching your search' : 'No employees found'}
-                  </p>
+                  </h4>
                   {!searchQuery && (
-                    <Button onClick={handleCreate}>
+                    <Button onClick={handleCreate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 mt-4">
                       <Plus className="mr-2 h-4 w-4" />
                       Add First Employee
                     </Button>

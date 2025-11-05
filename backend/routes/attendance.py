@@ -124,6 +124,59 @@ async def upload_attendance(
         )
 
 
+@router.get("/last-upload")
+async def get_last_upload_info(
+    session: Session = Depends(get_session),
+    current_employee: Employee = Depends(get_current_admin_employee)
+):
+    """Returns information about the last attendance upload."""
+    # Get the most recently created attendance record
+    latest_attendance = session.exec(
+        select(Attendance)
+        .order_by(Attendance.created_at.desc())
+        .limit(1)
+    ).first()
+    
+    if not latest_attendance:
+        return {
+            "has_upload": False,
+            "message": "No attendance data has been uploaded yet"
+        }
+    
+    # Get all records from the same week (same upload batch)
+    week_start = latest_attendance.week_start
+    week_end = latest_attendance.week_end
+    week_records = session.exec(
+        select(Attendance).where(
+            Attendance.week_start == week_start,
+            Attendance.week_end == week_end
+        )
+    ).all()
+    
+    # Get date range from the records
+    dates = [record.date for record in week_records]
+    min_date = min(dates)
+    max_date = max(dates)
+    
+    # Count unique employees
+    unique_employees = len(set(record.employee_id for record in week_records))
+    
+    return {
+        "has_upload": True,
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
+        "week_number": latest_attendance.week_number,
+        "year": latest_attendance.year,
+        "date_range": {
+            "start": min_date.isoformat(),
+            "end": max_date.isoformat()
+        },
+        "records_count": len(week_records),
+        "employees_count": unique_employees,
+        "uploaded_at": latest_attendance.created_at.isoformat() if latest_attendance.created_at else None
+    }
+
+
 @router.get("")
 async def get_attendance(
     session: Session = Depends(get_session),

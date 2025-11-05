@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Employee Portal",
-  description: "Employee Management System",
+  title: "rTrack - Workforce Attendance & Compliance",
+  description: "Professional workforce attendance and compliance management system",
 };
 
 export default function RootLayout({

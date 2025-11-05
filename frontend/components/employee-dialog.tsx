@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { apiClient, type Employee, type EmployeeCreate, type EmployeeUpdate } from '@/lib/api';
+import { apiClient, type Employee, type EmployeeCreate, type EmployeeUpdate, type Exception } from '@/lib/api';
 import { toast } from 'sonner';
 
 interface EmployeeDialogProps {
@@ -30,6 +30,8 @@ interface EmployeeDialogProps {
 
 export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [exceptions, setExceptions] = useState<Exception[]>([]);
+  const [loadingExceptions, setLoadingExceptions] = useState(false);
   const [formData, setFormData] = useState<EmployeeCreate>({
     employee_id: '',
     employee_name: '',
@@ -41,6 +43,12 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
     status: '',
     exception: '',
   });
+
+  useEffect(() => {
+    if (open) {
+      loadExceptions();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (employee) {
@@ -69,6 +77,19 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
       });
     }
   }, [employee, open]);
+
+  const loadExceptions = async () => {
+    try {
+      setLoadingExceptions(true);
+      const response = await apiClient.getExceptions();
+      setExceptions(response.exceptions);
+    } catch (error) {
+      // Silently fail - exceptions are optional
+      console.error('Failed to load exceptions:', error);
+    } finally {
+      setLoadingExceptions(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,11 +217,23 @@ export function EmployeeDialog({ open, onClose, employee }: EmployeeDialogProps)
           </div>
           <div className="space-y-2">
             <Label htmlFor="exception">Exception</Label>
-            <Input
-              id="exception"
-              value={formData.exception}
-              onChange={(e) => setFormData({ ...formData, exception: e.target.value })}
-            />
+            <Select
+              value={formData.exception || 'none'}
+              onValueChange={(value) => setFormData({ ...formData, exception: value === 'none' ? '' : value })}
+              disabled={loadingExceptions}
+            >
+              <SelectTrigger id="exception">
+                <SelectValue placeholder={loadingExceptions ? "Loading exceptions..." : "Select exception"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {exceptions.map((exception) => (
+                  <SelectItem key={exception.id} value={exception.name}>
+                    {exception.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>

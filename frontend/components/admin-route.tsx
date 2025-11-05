@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { getCachedAdminStatus, setCachedAdminStatus } from '@/lib/admin-cache';
 
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -15,6 +16,20 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   // Use useEffect to only run on client, preventing hydration mismatch
   useEffect(() => {
     let isMounted = true;
+    
+    // Check cache first
+    const cachedAdminStatus = getCachedAdminStatus();
+    if (cachedAdminStatus !== null) {
+      // Use cached value immediately
+      setIsAdmin(cachedAdminStatus);
+      setIsChecking(false);
+      
+      if (!cachedAdminStatus) {
+        toast.error('Access denied. Admin privileges required.');
+        router.push('/compliance');
+      }
+      return;
+    }
     
     // Show spinner only after a short delay to avoid flickering on fast checks
     const spinnerTimeout = setTimeout(() => {
@@ -28,7 +43,10 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
         const userInfo = await apiClient.getCurrentUser();
         if (!isMounted) return;
         
-        if (!userInfo.is_admin) {
+        const adminStatus = userInfo.is_admin;
+        setCachedAdminStatus(adminStatus);
+        
+        if (!adminStatus) {
           toast.error('Access denied. Admin privileges required.');
           router.push('/compliance');
           setIsAdmin(false);
@@ -40,6 +58,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
         toast.error('Failed to verify admin status');
         router.push('/compliance');
         setIsAdmin(false);
+        setCachedAdminStatus(false);
       } finally {
         if (isMounted) {
           clearTimeout(spinnerTimeout);
