@@ -50,3 +50,6 @@ htmlcov/
 # Logs
 *.log
 
+# rdesk folder (separate project, not part of rtrack)
+rdesk/
+
