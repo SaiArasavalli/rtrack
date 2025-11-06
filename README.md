@@ -49,7 +49,7 @@ rtrack/
 │   ├── app/         # Next.js app directory
 │   ├── components/  # React components
 │   └── lib/         # Frontend utilities and API client
-└── employees.db      # SQLite database (created automatically)
+└── rtrack.db         # SQLite database (created automatically)
 ```
 
 ## Prerequisites
@@ -119,7 +119,7 @@ Create a `.env` file in the `backend` directory:
 
 ```env
 SECRET_KEY=your-secret-key-change-this-in-production
-DATABASE_URL=sqlite:///./employees.db
+DATABASE_URL=sqlite:///./rtrack.db
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=password
@@ -196,7 +196,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8001
 
 **Database errors:**
 ```bash
-rm backend/employees.db  # Delete and restart
+rm backend/rtrack.db  # Delete and restart
 ```
 
 ### Frontend Issues

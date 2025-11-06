@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     HARDCODED_ADMIN_PASSWORD: str = Field(default="password", alias="ADMIN_PASSWORD")
     HARDCODED_ADMIN_EMPLOYEE_ID: str = Field(default="ADMIN", alias="ADMIN_EMPLOYEE_ID")
     
-    DATABASE_URL: str = "sqlite:///./employees.db"
+    DATABASE_URL: str = "sqlite:///./rtrack.db"
     
     ALLOWED_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
     
