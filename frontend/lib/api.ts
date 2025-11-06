@@ -280,9 +280,25 @@ class ApiClient {
     return this.request<UserInfo>('/auth/me');
   }
 
-  // Employees
-  async getEmployees(): Promise<{ employees: Employee[]; total: number }> {
-    return this.request<{ employees: Employee[]; total: number }>('/employees');
+  async getEmployees(
+    page: number = 1,
+    pageSize: number = 50,
+    search?: string,
+    vertical?: string,
+    status?: string,
+    exception?: string
+  ): Promise<{ employees: Employee[]; total: number; page: number; page_size: number; total_pages: number }> {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('page_size', pageSize.toString());
+    if (search) params.append('search', search);
+    if (vertical && vertical !== 'All') params.append('vertical', vertical);
+    if (status && status !== 'All') params.append('status', status);
+    if (exception && exception !== 'All') params.append('exception', exception);
+    
+    return this.request<{ employees: Employee[]; total: number; page: number; page_size: number; total_pages: number }>(
+      `/employees?${params.toString()}`
+    );
   }
 
   async createEmployee(employee: EmployeeCreate): Promise<Employee> {
@@ -331,9 +347,8 @@ class ApiClient {
     return response.json();
   }
 
-  // Attendance
-  async getAttendance(): Promise<{ attendances: Attendance[]; total: number }> {
-    return this.request<{ attendances: Attendance[]; total: number }>('/attendance');
+  async getAttendance(page: number = 1, pageSize: number = 100): Promise<{ attendances: Attendance[]; total: number; page: number; page_size: number; total_pages: number }> {
+    return this.request<{ attendances: Attendance[]; total: number; page: number; page_size: number; total_pages: number }>(`/attendance?page=${page}&page_size=${pageSize}`);
   }
 
   async getLastUploadInfo(): Promise<{
@@ -378,44 +393,65 @@ class ApiClient {
   async getCompliance(
     year?: number,
     month?: number,
-    status?: string
-  ): Promise<ComplianceResponse> {
+    status?: string,
+    search?: string,
+    exception?: string,
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<ComplianceResponse & { page: number; page_size: number; total_pages: number }> {
     const params = new URLSearchParams();
     if (year) params.append('year', year.toString());
     if (month) params.append('month', month.toString());
     if (status) params.append('status', status);
+    if (search) params.append('search', search);
+    if (exception && exception !== 'All') params.append('exception', exception);
+    params.append('page', page.toString());
+    params.append('page_size', pageSize.toString());
 
-    const query = params.toString();
-    return this.request<ComplianceResponse>(
-      `/compliance${query ? `?${query}` : ''}`
+    return this.request<ComplianceResponse & { page: number; page_size: number; total_pages: number }>(
+      `/compliance?${params.toString()}`
     );
   }
 
   async getMonthlyCompliance(
     year?: number,
-    status?: string
-  ): Promise<MonthlyComplianceResponse> {
+    status?: string,
+    search?: string,
+    exception?: string,
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<MonthlyComplianceResponse & { page: number; page_size: number; total_pages: number }> {
     const params = new URLSearchParams();
     if (year) params.append('year', year.toString());
     if (status) params.append('status', status);
+    if (search) params.append('search', search);
+    if (exception && exception !== 'All') params.append('exception', exception);
+    params.append('page', page.toString());
+    params.append('page_size', pageSize.toString());
 
-    const query = params.toString();
-    return this.request<MonthlyComplianceResponse>(
-      `/compliance/monthly${query ? `?${query}` : ''}`
+    return this.request<MonthlyComplianceResponse & { page: number; page_size: number; total_pages: number }>(
+      `/compliance/monthly?${params.toString()}`
     );
   }
 
   async getQuarterlyCompliance(
     year?: number,
-    status?: string
-  ): Promise<QuarterlyComplianceResponse> {
+    status?: string,
+    search?: string,
+    exception?: string,
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<QuarterlyComplianceResponse & { page: number; page_size: number; total_pages: number }> {
     const params = new URLSearchParams();
     if (year) params.append('year', year.toString());
     if (status) params.append('status', status);
+    if (search) params.append('search', search);
+    if (exception && exception !== 'All') params.append('exception', exception);
+    params.append('page', page.toString());
+    params.append('page_size', pageSize.toString());
 
-    const query = params.toString();
-    return this.request<QuarterlyComplianceResponse>(
-      `/compliance/quarterly${query ? `?${query}` : ''}`
+    return this.request<QuarterlyComplianceResponse & { page: number; page_size: number; total_pages: number }>(
+      `/compliance/quarterly?${params.toString()}`
     );
   }
 
@@ -449,9 +485,8 @@ class ApiClient {
     );
   }
 
-  // Exceptions
-  async getExceptions(): Promise<{ exceptions: Exception[]; total: number }> {
-    return this.request<{ exceptions: Exception[]; total: number }>('/exceptions');
+  async getExceptions(page: number = 1, pageSize: number = 50): Promise<{ exceptions: Exception[]; total: number; page: number; page_size: number; total_pages: number }> {
+    return this.request<{ exceptions: Exception[]; total: number; page: number; page_size: number; total_pages: number }>(`/exceptions?page=${page}&page_size=${pageSize}`);
   }
 
   async createException(exception: ExceptionCreate): Promise<Exception> {

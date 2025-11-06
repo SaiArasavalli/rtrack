@@ -10,7 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-# Only ignore root-level Python build libs; allow nested project libs like frontend/lib
 /lib/
 /lib64/
 parts/
@@ -27,10 +26,37 @@ env/
 ENV/
 .venv
 
+# Node.js / Frontend
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
 # Database
 *.db
 *.sqlite
 *.sqlite3
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # IDE
 .vscode/
@@ -47,10 +73,19 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+/coverage
 
 # Logs
 *.log
 
-# rdesk folder (separate project, not part of rtrack)
-rdesk/
+# Production
+/build
 
+# Vercel
+.vercel
+
+# Misc
+*.pem
+
+# Project-specific
+rdesk/

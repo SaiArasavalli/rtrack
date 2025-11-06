@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminRoute } from '@/components/admin-route';
-import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -102,7 +101,6 @@ export default function UploadPage() {
     <ProtectedRoute>
       <AdminRoute>
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
-        <Navbar />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
           <Card className="max-w-2xl mx-auto border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
             <CardHeader>

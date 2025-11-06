@@ -76,7 +76,7 @@ export function Navbar() {
             <Sparkles className="h-6 w-6 text-blue-600" />
             <div className="absolute inset-0 bg-blue-600/20 blur-lg rounded-full"></div>
           </div>
-          <Link href="/employees">
+          <Link href="/">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               rTrack
             </h1>

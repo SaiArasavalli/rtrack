@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminRoute } from '@/components/admin-route';
-import { Navbar } from '@/components/layout/navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -50,7 +49,6 @@ export default function MonthlyComplianceCalculatePage() {
     <ProtectedRoute>
       <AdminRoute>
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navbar />
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-2xl mx-auto">
             <CardHeader>

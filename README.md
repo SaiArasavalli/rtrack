@@ -36,62 +36,87 @@ A comprehensive employee and attendance management system with compliance tracki
 ```
 rtrack/
 ├── backend/          # FastAPI backend application
+│   ├── main.py      # FastAPI application entry point
+│   ├── database.py   # Database configuration
+│   ├── auth.py      # Authentication and authorization
+│   ├── config/      # Configuration settings
+│   ├── models/      # SQLModel database models
+│   ├── routes/      # API route handlers
+│   ├── services/    # Business logic services
+│   ├── utils/       # Utility functions
+│   └── requirements.txt  # Python dependencies
 ├── frontend/         # Next.js frontend application
-├── requirements.txt  # Python dependencies
-└── employees.db      # SQLite database
+│   ├── app/         # Next.js app directory
+│   ├── components/  # React components
+│   └── lib/         # Frontend utilities and API client
+└── employees.db      # SQLite database (created automatically)
 ```
 
-See [README_STRUCTURE.md](README_STRUCTURE.md) for detailed project structure.
-
 ## Prerequisites
-
-Before you begin, ensure you have the following installed on your system:
 
 - **Python 3.8+** - [Download Python](https://www.python.org/downloads/)
 - **Node.js 18+** and **npm** - [Download Node.js](https://nodejs.org/)
 - **Git** - [Download Git](https://git-scm.com/downloads)
 
-## Installation & Setup
+## Quick Start
 
-### Step 1: Clone the Repository
+### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd rtrack
 ```
 
-### Step 2: Backend Setup
+### 2. Backend Setup
 
-#### 2.1 Create Virtual Environment
-
-**On macOS/Linux:**
 ```bash
+# Create virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r backend/requirements.txt
 ```
 
-**On Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-#### 2.2 Install Python Dependencies
+### 3. Frontend Setup
 
 ```bash
-pip install -r requirements.txt
+cd frontend
+npm install
 ```
 
-#### 2.3 (Optional) Configure Environment Variables
+### 4. Start the Application
 
-Create a `.env` file in the `backend` directory (optional - defaults are provided):
-
+**Terminal 1 - Backend:**
 ```bash
 cd backend
-touch .env  # On Windows: type nul > .env
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Add the following to `.env` (optional):
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+### 5. Access the Application
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
+
+**Default Admin Credentials:**
+- Username: `admin`
+- Password: `password`
+
+*Note: Change these credentials in production!*
+
+## Configuration
+
+### Backend Environment Variables (Optional)
+
+Create a `.env` file in the `backend` directory:
+
 ```env
 SECRET_KEY=your-secret-key-change-this-in-production
 DATABASE_URL=sqlite:///./employees.db
@@ -99,134 +124,16 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=password
 DEBUG=False
+LOG_LEVEL=INFO
 ```
 
-### Step 3: Frontend Setup
+### Frontend Environment Variables (Optional)
 
-#### 3.1 Navigate to Frontend Directory
+Create a `.env.local` file in the `frontend` directory:
 
-```bash
-cd frontend
-```
-
-#### 3.2 Install Node Dependencies
-
-```bash
-npm install
-```
-
-#### 3.3 (Optional) Configure Environment Variables
-
-Create a `.env.local` file in the `frontend` directory (optional):
-
-```bash
-touch .env.local  # On Windows: type nul > .env.local
-```
-
-Add the following if your backend runs on a different port:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
-
-## Running the Application
-
-### Step 4: Start the Backend Server
-
-Open a terminal window and run:
-
-```bash
-cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-**Backend will be available at:**
-- API: `http://localhost:8000`
-- API Documentation: `http://localhost:8000/docs`
-- Interactive API Docs: `http://localhost:8000/redoc`
-
-### Step 5: Start the Frontend Server
-
-Open a **new** terminal window and run:
-
-```bash
-cd frontend
-npm run dev
-```
-
-**Frontend will be available at:**
-- Web Application: `http://localhost:3000`
-
-### Step 6: Access the Application
-
-1. Open your browser and navigate to `http://localhost:3000`
-2. You'll be redirected to the login page
-3. Use the default admin credentials to log in:
-   - **Username**: `admin`
-   - **Password**: `password`
-
-## Quick Start Summary
-
-For quick reference, here's the complete setup process:
-
-```bash
-# 1. Clone repository
-git clone <repository-url>
-cd rtrack
-
-# 2. Backend setup
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-
-# 3. Frontend setup
-cd frontend
-npm install
-
-# 4. Start backend (in one terminal)
-cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# 5. Start frontend (in another terminal)
-cd frontend
-npm run dev
-
-# 6. Open browser and go to http://localhost:3000
-```
-
-## Default Admin Credentials
-
-- **Username**: `admin`
-- **Password**: `password`
-
-*Note: Change these credentials in production!*
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Backend won't start**
-- Ensure Python 3.8+ is installed: `python --version`
-- Make sure virtual environment is activated
-- Check if port 8000 is already in use
-
-**Issue: Frontend won't start**
-- Ensure Node.js 18+ is installed: `node --version`
-- Delete `node_modules` and `package-lock.json`, then run `npm install` again
-- Check if port 3000 is already in use
-
-**Issue: Cannot connect to backend from frontend**
-- Verify backend is running on `http://localhost:8000`
-- Check `NEXT_PUBLIC_API_URL` in frontend `.env.local` matches backend URL
-- Ensure CORS is properly configured in backend settings
-
-**Issue: Database not found**
-- The database (`employees.db`) will be created automatically on first run
-- If you encounter database errors, delete `employees.db` and restart the backend
-
-**Issue: Login fails**
-- Verify you're using the correct credentials (default: admin/password)
-- Check backend logs for authentication errors
-- Ensure backend is running and accessible
 
 ## API Endpoints
 
@@ -235,44 +142,80 @@ npm run dev
 - `GET /auth/me` - Get current user information
 
 ### Employees
-- `POST /employees/upload` - Upload employee Excel file
-- `GET /employees` - Get all employees (admin only)
+- `GET /employees?page=1&page_size=50` - Get employees (paginated, admin only)
 - `POST /employees` - Create employee (admin only)
 - `GET /employees/{employee_id}` - Get employee by ID (admin only)
 - `PATCH /employees/{employee_id}` - Update employee (admin only)
 - `DELETE /employees/{employee_id}` - Delete employee (admin only)
+- `POST /employees/upload` - Upload employee Excel file (admin only)
 
 ### Attendance
 - `POST /attendance/upload` - Upload attendance Excel file (admin only)
-- `GET /attendance` - Get attendance records (latest week shown)
+- `GET /attendance?page=1&page_size=100` - Get attendance records (paginated)
 - `GET /attendance/last-upload` - Get last upload information (admin only)
 
 ### Compliance
-- `GET /compliance` - Get weekly compliance (pivot format)
-- `POST /compliance/monthly/calculate` - Calculate monthly compliance (admin only)
-- `GET /compliance/monthly` - Get monthly compliance (pivot format)
-- `POST /compliance/quarterly/calculate` - Calculate quarterly compliance (admin only)
-- `GET /compliance/quarterly` - Get quarterly compliance (pivot format)
+- `GET /compliance?year=2024&month=1&status=Active` - Get weekly compliance (pivot format)
+- `POST /compliance/monthly/calculate?year=2024&month=1` - Calculate monthly compliance (admin only)
+- `GET /compliance/monthly?year=2024&status=Active` - Get monthly compliance (pivot format)
+- `POST /compliance/quarterly/calculate?year=2024&quarter=1` - Calculate quarterly compliance (admin only)
+- `GET /compliance/quarterly?year=2024&status=Active` - Get quarterly compliance (pivot format)
 
 ### Exceptions
-- `GET /exceptions` - Get all exceptions (admin only)
+- `GET /exceptions?page=1&page_size=50` - Get all exceptions (paginated, admin only)
 - `POST /exceptions` - Create exception (admin only)
 - `GET /exceptions/{id}` - Get exception by ID (admin only)
 - `PUT /exceptions/{id}` - Update exception (admin only)
 - `DELETE /exceptions/{id}` - Delete exception (admin only)
 - `POST /exceptions/populate` - Populate exceptions from employee records (admin only)
 
-### Database Management
-- `DELETE /database/clean` - Delete all data except employees (admin only)
+## Performance Optimizations
+
+### Backend
+- ✅ Pagination on all list endpoints
+- ✅ Database query optimization with indexes
+- ✅ Connection pooling for PostgreSQL
+- ✅ Response compression
+- ✅ Efficient data processing
+
+### Frontend
+- ✅ Code splitting and lazy loading
+- ✅ Optimized bundle size
+- ✅ Memoization for expensive computations
+- ✅ Efficient re-renders
+- ✅ Optimized package imports
+
+## Troubleshooting
+
+### Backend Issues
+
+**Port 8000 already in use:**
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8001
+```
+
+**Database errors:**
+```bash
+rm backend/employees.db  # Delete and restart
+```
+
+### Frontend Issues
+
+**Port 3000 already in use:**
+```bash
+npm run dev -- -p 3001
+```
+
+**Cannot connect to backend:**
+- Verify backend is running on http://localhost:8000
+- Check `NEXT_PUBLIC_API_URL` in `.env.local`
+- Ensure CORS is properly configured
 
 ## Development
 
 The project follows a modular architecture:
-
 - **Backend**: Organized into routes, services, models, utils, and config
 - **Frontend**: Component-based architecture with reusable UI components
-
-See [README_STRUCTURE.md](README_STRUCTURE.md) for detailed architecture documentation.
 
 ## License
 

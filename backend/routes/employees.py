@@ -1,8 +1,8 @@
-"""Employee management routes."""
-
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import JSONResponse
-from sqlmodel import Session, select, delete
+from sqlmodel import Session, select, delete, func
+from typing import Optional
+from sqlalchemy import or_
 import pandas as pd
 from io import BytesIO
 from backend.models import Employee, EmployeeCreate, EmployeeUpdate
@@ -12,19 +12,85 @@ from backend.utils import to_snake_case
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
+
 
 @router.get("")
 def get_employees(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    search: Optional[str] = None,
+    vertical: Optional[str] = None,
+    status: Optional[str] = None,
+    exception: Optional[str] = None,
     session: Session = Depends(get_session),
     current_employee: Employee = Depends(get_current_admin_employee)
 ):
-    """Returns all employees from database."""
     statement = select(Employee)
+    
+    if search and search.strip():
+        search_lower = search.strip().lower()
+        statement = statement.where(
+            or_(
+                Employee.employee_id.ilike(f"%{search_lower}%"),
+                Employee.employee_name.ilike(f"%{search_lower}%")
+            )
+        )
+    
+    if vertical and vertical != "All":
+        statement = statement.where(Employee.vertical == vertical)
+    
+    if status and status != "All":
+        statement = statement.where(Employee.status == status)
+    
+    if exception and exception != "All":
+        if exception == "default":
+            statement = statement.where(
+                or_(
+                    Employee.exception == None,
+                    Employee.exception == ""
+                )
+            )
+        else:
+            statement = statement.where(Employee.exception == exception)
+    
+    count_statement = select(func.count(Employee.id))
+    if search and search.strip():
+        search_lower = search.strip().lower()
+        count_statement = count_statement.where(
+            or_(
+                Employee.employee_id.ilike(f"%{search_lower}%"),
+                Employee.employee_name.ilike(f"%{search_lower}%")
+            )
+        )
+    if vertical and vertical != "All":
+        count_statement = count_statement.where(Employee.vertical == vertical)
+    if status and status != "All":
+        count_statement = count_statement.where(Employee.status == status)
+    if exception and exception != "All":
+        if exception == "default":
+            count_statement = count_statement.where(
+                or_(
+                    Employee.exception == None,
+                    Employee.exception == ""
+                )
+            )
+        else:
+            count_statement = count_statement.where(Employee.exception == exception)
+    
+    total_count = session.exec(count_statement).one()
+    
+    offset = (page - 1) * page_size
+    statement = statement.offset(offset).limit(page_size).order_by(Employee.id.desc())
     employees = session.exec(statement).all()
-    employee_list = [employee.model_dump() for employee in employees]
+    
     return {
-        "total": len(employee_list),
-        "employees": employee_list
+        "total": total_count,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total_count + page_size - 1) // page_size if total_count > 0 else 0,
+        "employees": [employee.model_dump() for employee in employees]
     }
 
 
@@ -34,7 +100,6 @@ def create_employee(
     session: Session = Depends(get_session),
     current_employee: Employee = Depends(get_current_admin_employee)
 ):
-    """Creates a new employee record."""
     statement = select(Employee).where(Employee.employee_id == employee_data.employee_id)
     existing_employee = session.exec(statement).first()
     
@@ -61,7 +126,6 @@ def get_employee(
     session: Session = Depends(get_session),
     current_employee: Employee = Depends(get_current_admin_employee)
 ):
-    """Returns employee by employee_id."""
     statement = select(Employee).where(Employee.employee_id == employee_id)
     employee = session.exec(statement).first()
     if not employee:
@@ -76,7 +140,6 @@ def update_employee(
     session: Session = Depends(get_session),
     current_employee: Employee = Depends(get_current_admin_employee)
 ):
-    """Updates employee record by employee_id (partial update)."""
     statement = select(Employee).where(Employee.employee_id == employee_id)
     employee = session.exec(statement).first()
     
@@ -103,7 +166,6 @@ def delete_employee(
     session: Session = Depends(get_session),
     current_employee: Employee = Depends(get_current_admin_employee)
 ):
-    """Deletes employee record by employee_id."""
     statement = select(Employee).where(Employee.employee_id == employee_id)
     employee = session.exec(statement).first()
     
@@ -121,12 +183,11 @@ def delete_employee(
 
 @router.post("/upload")
 async def upload_excel(
-    file: UploadFile = File(..., description="Excel file with employee data"),
+    file: UploadFile = File(...),
     session: Session = Depends(get_session),
     current_employee: Employee = Depends(get_current_admin_employee)
 ):
-    """Uploads Excel file and stores employee records in database."""
-    if not file.filename.endswith(('.xlsx', '.xls')):
+    if not file.filename or not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(
             status_code=400,
             detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
@@ -135,19 +196,12 @@ async def upload_excel(
     try:
         contents = await file.read()
         df = pd.read_excel(BytesIO(contents))
-        
         df.columns = [to_snake_case(col) for col in df.columns]
         
         expected_columns = [
-            'employee_id',
-            'employee_name',
-            'reporting_manager_id',
-            'reporting_manager_name',
-            'vertical_head_id',
-            'vertical_head_name',
-            'vertical',
-            'status',
-            'exception'
+            'employee_id', 'employee_name', 'reporting_manager_id',
+            'reporting_manager_name', 'vertical_head_id', 'vertical_head_name',
+            'vertical', 'status', 'exception'
         ]
         
         missing_columns = [col for col in expected_columns if col not in df.columns]
@@ -157,24 +211,17 @@ async def upload_excel(
                 detail=f"Missing required columns: {', '.join(missing_columns)}"
             )
         
-        statement = delete(Employee)
-        session.exec(statement)
+        session.exec(delete(Employee))
         session.commit()
         
-        records = df.to_dict(orient='records')
-        
         employees = []
-        for record in records:
-            cleaned_record = {
-                k: (v if pd.notna(v) else None) for k, v in record.items()
-            }
-            if 'employee_id' in cleaned_record and cleaned_record['employee_id'] is not None:
+        for record in df.to_dict(orient='records'):
+            cleaned_record = {k: (v if pd.notna(v) else None) for k, v in record.items()}
+            if 'employee_id' in cleaned_record and cleaned_record['employee_id']:
                 cleaned_record['employee_id'] = str(cleaned_record['employee_id'])
-            if 'employee_name' in cleaned_record and cleaned_record['employee_name'] is not None:
+            if 'employee_name' in cleaned_record and cleaned_record['employee_name']:
                 cleaned_record['employee_name'] = str(cleaned_record['employee_name'])
-            
-            employee = Employee(**cleaned_record)
-            employees.append(employee)
+            employees.append(Employee(**cleaned_record))
         
         session.add_all(employees)
         session.commit()

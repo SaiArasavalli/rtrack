@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/sai/Projects/rtrack/frontend/app/page.tsx"],"sourcesContent":["'use client';\n\nimport { useEffect } from 'react';\nimport { useRouter } from 'next/navigation';\nimport { isAuthenticated } from '@/lib/auth';\n\nexport default function Home() {\n  const router = useRouter();\n\n  useEffect(() => {\n    if (isAuthenticated()) {\n      router.push('/employees');\n    } else {\n      router.push('/login');\n    }\n  }, [router]);\n\n  return null;\n}\n"],"names":[],"mappings":";;;;AAEA;AACA;AACA;AAJA;;;;AAMe,SAAS;IACtB,MAAM,SAAS,IAAA,+IAAS;IAExB,IAAA,kNAAS,EAAC;QACR,IAAI,IAAA,8HAAe,KAAI;YACrB,OAAO,IAAI,CAAC;QACd,OAAO;YACL,OAAO,IAAI,CAAC;QACd;IACF,GAAG;QAAC;KAAO;IAEX,OAAO;AACT","debugId":null}}]
+}

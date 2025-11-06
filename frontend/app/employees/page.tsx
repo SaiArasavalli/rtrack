@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminRoute } from '@/components/admin-route';
-import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,11 +20,14 @@ import { apiClient, type Employee } from '@/lib/api';
 import { toast } from 'sonner';
 import { EmployeeDialog } from '@/components/employee-dialog';
 import { Upload, Plus, Trash2, Edit, Search, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { getCachedAdminStatus } from '@/lib/admin-cache';
 
 const ITEMS_PER_PAGE = 20;
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [totalEmployees, setTotalEmployees] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -34,42 +36,73 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [exceptionFilter, setExceptionFilter] = useState<string>('All');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Debounced search query
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  
+  // Filter options (fetch all employees once to populate dropdowns)
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
 
-  const fetchEmployees = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.getEmployees();
-      // Sort by ID descending (newest first)
-      const sortedEmployees = [...response.employees].sort((a, b) => {
-        const idA = a.id ?? 0;
-        const idB = b.id ?? 0;
-        return idB - idA;
-      });
-      setEmployees(sortedEmployees);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to fetch employees');
-    } finally {
-      setLoading(false);
+  // Debounce search query (500ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch all employees once to populate filter options
+  useEffect(() => {
+    // Only fetch if user is confirmed admin (AdminRoute should prevent rendering, but add safeguard)
+    const adminStatus = getCachedAdminStatus();
+    if (adminStatus !== true) {
+      return; // Don't fetch if we know user is not admin or status is not yet determined
     }
-  };
+    
+    const fetchAllEmployees = async () => {
+      try {
+        // Fetch without any filters to get all unique values
+        // Use max page size (200) and fetch all pages
+        const response = await apiClient.getEmployees(1, 200, undefined, undefined, undefined, undefined);
+        let allEmps = [...response.employees];
+        
+        // If there are more pages, fetch them too
+        if (response.total_pages > 1) {
+          for (let page = 2; page <= response.total_pages; page++) {
+            const pageResponse = await apiClient.getEmployees(page, 200, undefined, undefined, undefined, undefined);
+            allEmps.push(...pageResponse.employees);
+          }
+        }
+        setAllEmployees(allEmps);
+      } catch (error) {
+        // Silently fail if user is not admin (AdminRoute will redirect)
+        const currentAdminStatus = getCachedAdminStatus();
+        if (currentAdminStatus !== true) {
+          return;
+        }
+        console.error('Failed to fetch all employees for filter options:', error);
+      }
+    };
+    fetchAllEmployees();
+  }, []);
 
-  // Compute filter options
+  // Compute filter options from all employees
   const verticalOptions = useMemo(() => {
     const set = new Set<string>();
-    employees.forEach((e) => { if (e.vertical) set.add(e.vertical); });
+    allEmployees.forEach((e) => { if (e.vertical) set.add(e.vertical); });
     return ['All', ...Array.from(set).sort()];
-  }, [employees]);
+  }, [allEmployees]);
 
   const statusOptions = useMemo(() => {
     const set = new Set<string>();
-    employees.forEach((e) => { if (e.status) set.add(e.status); });
+    allEmployees.forEach((e) => { if (e.status) set.add(e.status); });
     return ['All', ...Array.from(set).sort()];
-  }, [employees]);
+  }, [allEmployees]);
 
   const exceptionOptions = useMemo(() => {
     const set = new Set<string>();
     let hasDefault = false;
-    employees.forEach((e) => {
+    allEmployees.forEach((e) => {
       const ex = (e.exception ?? '').trim();
       if (ex === '') {
         hasDefault = true;
@@ -80,43 +113,40 @@ export default function EmployeesPage() {
     const list: string[] = ['All'];
     if (hasDefault) list.push('default');
     return [...list, ...Array.from(set).sort()];
-  }, [employees]);
+  }, [allEmployees]);
 
-  // Filter employees based on search and dropdowns
-  const filteredEmployees = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    return employees.filter((emp) => {
-      const matchesSearch = !query
-        || emp.employee_id?.toLowerCase().includes(query)
-        || emp.employee_name?.toLowerCase().includes(query);
-
-      const matchesVertical = verticalFilter === 'All' || (emp.vertical ?? '') === verticalFilter;
-      const matchesStatus = statusFilter === 'All' || (emp.status ?? '') === statusFilter;
-      const empException = (emp.exception ?? '').trim();
-      const matchesException = (
-        exceptionFilter === 'All' ||
-        (exceptionFilter === 'default' && empException === '') ||
-        empException === exceptionFilter
+  const fetchEmployees = async (pageNum: number = 1) => {
+    try {
+      setLoading(true);
+      const response = await apiClient.getEmployees(
+        pageNum,
+        ITEMS_PER_PAGE,
+        debouncedSearchQuery.trim() || undefined,
+        verticalFilter !== 'All' ? verticalFilter : undefined,
+        statusFilter !== 'All' ? statusFilter : undefined,
+        exceptionFilter !== 'All' ? exceptionFilter : undefined
       );
-
-      return matchesSearch && matchesVertical && matchesStatus && matchesException;
-    });
-  }, [employees, searchQuery, verticalFilter, statusFilter, exceptionFilter]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex);
-
-  useEffect(() => {
-    setCurrentPage(1); // Reset to first page when search/filters change
-  }, [searchQuery, verticalFilter, statusFilter, exceptionFilter]);
+      setEmployees(response.employees);
+      setTotalEmployees(response.total);
+      setTotalPages(response.total_pages);
+      setCurrentPage(pageNum);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch employees');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    // Only fetch if user is confirmed admin (AdminRoute should prevent rendering, but add safeguard)
+    const adminStatus = getCachedAdminStatus();
+    if (adminStatus !== true) {
+      return; // Don't fetch if we know user is not admin or status is not yet determined
+    }
+    
+    setCurrentPage(1);
+    fetchEmployees(1);
+  }, [debouncedSearchQuery, verticalFilter, statusFilter, exceptionFilter]);
 
   const handleDelete = async (employeeId: string) => {
     if (!confirm('Are you sure you want to delete this employee?')) return;
@@ -124,7 +154,17 @@ export default function EmployeesPage() {
     try {
       await apiClient.deleteEmployee(employeeId);
       toast.success('Employee deleted successfully');
-      fetchEmployees();
+      fetchEmployees(currentPage);
+      // Refresh filter options
+      const response = await apiClient.getEmployees(1, 200, undefined, undefined, undefined, undefined);
+      const allEmps = [...response.employees];
+      if (response.total_pages > 1) {
+        for (let page = 2; page <= response.total_pages; page++) {
+          const pageResponse = await apiClient.getEmployees(page, 200, undefined, undefined, undefined, undefined);
+          allEmps.push(...pageResponse.employees);
+        }
+      }
+      setAllEmployees(allEmps);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete employee');
     }
@@ -143,14 +183,26 @@ export default function EmployeesPage() {
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingEmployee(null);
-    fetchEmployees();
+    fetchEmployees(currentPage);
+    // Refresh filter options
+    apiClient.getEmployees(1, 200, undefined, undefined, undefined, undefined).then(async response => {
+      const allEmps = [...response.employees];
+      if (response.total_pages > 1) {
+        for (let page = 2; page <= response.total_pages; page++) {
+          const pageResponse = await apiClient.getEmployees(page, 200, undefined, undefined, undefined, undefined);
+          allEmps.push(...pageResponse.employees);
+        }
+      }
+      setAllEmployees(allEmps);
+    }).catch(error => {
+      console.error('Failed to refresh filter options:', error);
+    });
   };
 
   return (
     <ProtectedRoute>
       <AdminRoute>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
-        <Navbar />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
             <CardHeader>
@@ -160,7 +212,7 @@ export default function EmployeesPage() {
                     Employees
                   </CardTitle>
                   <CardDescription className="mt-2 text-base">
-                    Manage employee records ({filteredEmployees.length} of {employees.length} total)
+                    Manage employee records ({employees.length} of {totalEmployees} total)
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -180,15 +232,15 @@ export default function EmployeesPage() {
               <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="employee-search">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <div className="relative h-11">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
                     <Input
                       id="employee-search"
                       type="text"
                       placeholder="Employee ID or Name"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 h-11 w-full"
+                      className="pl-10 h-11 w-full text-sm py-2"
                     />
                   </div>
                 </div>
@@ -244,7 +296,7 @@ export default function EmployeesPage() {
                     <p className="text-sm text-muted-foreground font-medium">Loading employees...</p>
                   </div>
                 </div>
-              ) : filteredEmployees.length === 0 ? (
+              ) : employees.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="relative mb-4">
                     <Users className="h-16 w-16 text-muted-foreground/40" />
@@ -277,7 +329,7 @@ export default function EmployeesPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedEmployees.map((employee) => (
+                        {employees.map((employee) => (
                           <TableRow key={employee.employee_id}>
                             <TableCell className="font-medium">{employee.employee_id}</TableCell>
                             <TableCell>{employee.employee_name}</TableCell>
@@ -324,13 +376,17 @@ export default function EmployeesPage() {
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t">
                       <div className="text-sm text-slate-600 dark:text-slate-400">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredEmployees.length)} of {filteredEmployees.length} employees
+                        Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalEmployees)} of {totalEmployees} employees
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                          onClick={() => {
+                            const newPage = Math.max(1, currentPage - 1);
+                            setCurrentPage(newPage);
+                            fetchEmployees(newPage);
+                          }}
                           disabled={currentPage === 1}
                         >
                           <ChevronLeft className="h-4 w-4 mr-1" />
@@ -342,7 +398,11 @@ export default function EmployeesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                          onClick={() => {
+                            const newPage = Math.min(totalPages, currentPage + 1);
+                            setCurrentPage(newPage);
+                            fetchEmployees(newPage);
+                          }}
                           disabled={currentPage === totalPages}
                         >
                           Next

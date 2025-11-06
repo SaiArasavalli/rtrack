@@ -1,4 +1,3 @@
-"""Main FastAPI application."""
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,20 +13,15 @@ from backend.routes import auth, employees, attendance, compliance, exceptions
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events."""
-    # Startup
-    logger.info("Starting Rtrack API...")
+    logger.info("Starting rTrack API...")
     try:
         create_db_and_tables()
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {str(e)}", exc_info=True)
         raise
-    
     yield
-    
-    # Shutdown
-    logger.info("Shutting down Rtrack API...")
+    logger.info("Shutting down rTrack API...")
 
 
 app = FastAPI(
@@ -38,7 +32,6 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
-# Configure CORS with security best practices
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -46,14 +39,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
     expose_headers=["X-Total-Count", "X-Request-ID"],
-    max_age=3600,  # Cache preflight requests for 1 hour
+    max_age=3600,
 )
 
 
-# Global exception handlers
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions."""
     logger.warning(f"HTTP {exc.status_code}: {exc.detail} - Path: {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
@@ -63,7 +54,6 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors."""
     logger.warning(f"Validation error: {exc.errors()} - Path: {request.url.path}")
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -73,7 +63,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions."""
     logger.error(f"Unhandled exception: {str(exc)} - Path: {request.url.path}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -81,31 +70,25 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Middleware for request logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all requests."""
     import time
     start_time = time.time()
-    
     response = await call_next(request)
-    
     process_time = time.time() - start_time
     logger.info(
         f"{request.method} {request.url.path} - "
         f"Status: {response.status_code} - "
         f"Time: {process_time:.3f}s"
     )
-    
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
 
 @app.get("/")
 def read_root():
-    """Root endpoint."""
     return {
-        "message": "Rtrack API - Employee and Attendance Management System",
+        "message": "rTrack API - Employee and Attendance Management System",
         "version": settings.APP_VERSION,
         "status": "running"
     }
@@ -113,12 +96,9 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint."""
     try:
-        # Check database connection
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        
         return {
             "status": "healthy",
             "database": "connected"
@@ -135,20 +115,8 @@ def health_check():
         )
 
 
-# Include routers
 app.include_router(auth.router)
 app.include_router(employees.router)
 app.include_router(attendance.router)
 app.include_router(compliance.router)
 app.include_router(exceptions.router)
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        log_level=settings.LOG_LEVEL.lower(),
-        access_log=settings.DEBUG,
-    )

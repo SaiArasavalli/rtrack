@@ -1,53 +1,54 @@
-"""Configuration settings for the backend."""
-import os
-from datetime import timedelta
-from typing import List
-from pydantic_settings import BaseSettings
+from typing import List, Union
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    SECRET_KEY: str = "your-secret-key-change-this-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # Security settings
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
-    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    HARDCODED_ADMIN_USERNAME: str = Field(default="admin", alias="ADMIN_USERNAME")
+    HARDCODED_ADMIN_PASSWORD: str = Field(default="password", alias="ADMIN_PASSWORD")
+    HARDCODED_ADMIN_EMPLOYEE_ID: str = Field(default="ADMIN", alias="ADMIN_EMPLOYEE_ID")
     
-    # Hardcoded admin credentials (should be changed in production)
-    HARDCODED_ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
-    HARDCODED_ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "password")
-    HARDCODED_ADMIN_EMPLOYEE_ID: str = os.getenv("ADMIN_EMPLOYEE_ID", "ADMIN")
+    DATABASE_URL: str = "sqlite:///./employees.db"
     
-    # Database settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./employees.db")
+    ALLOWED_ORIGINS: Union[str, List[str]] = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
     
-    # CORS settings
-    ALLOWED_ORIGINS: List[str] = os.getenv(
-        "ALLOWED_ORIGINS",
-        "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
-    ).split(",")
+    APP_NAME: str = "rTrack API"
+    APP_VERSION: str = "1.0.0"
+    DEBUG: bool = False
     
-    # Application settings
-    APP_NAME: str = os.getenv("APP_NAME", "Rtrack API")
-    APP_VERSION: str = os.getenv("APP_VERSION", "1.0.0")
-    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+    RATE_LIMIT_ENABLED: bool = False
+    RATE_LIMIT_PER_MINUTE: int = 60
     
-    # Rate limiting (optional)
-    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "False").lower() == "true"
-    RATE_LIMIT_PER_MINUTE: int = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
+    LOG_LEVEL: str = "INFO"
     
-    # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    @field_validator('ALLOWED_ORIGINS', mode='before')
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        if isinstance(v, list):
+            return v
+        return v
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    @property
+    def allowed_origins_list(self) -> List[str]:
+        if isinstance(self.ALLOWED_ORIGINS, list):
+            return self.ALLOWED_ORIGINS
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(',') if origin.strip()]
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        populate_by_name=True,
+    )
 
 
-# Create settings instance
 settings = Settings()
 
-# Export for backward compatibility
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -55,4 +56,4 @@ HARDCODED_ADMIN_USERNAME = settings.HARDCODED_ADMIN_USERNAME
 HARDCODED_ADMIN_PASSWORD = settings.HARDCODED_ADMIN_PASSWORD
 HARDCODED_ADMIN_EMPLOYEE_ID = settings.HARDCODED_ADMIN_EMPLOYEE_ID
 DATABASE_URL = settings.DATABASE_URL
-ALLOWED_ORIGINS = settings.ALLOWED_ORIGINS
+ALLOWED_ORIGINS = settings.allowed_origins_list

@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
-import { Navbar } from '@/components/layout/navbar';
 import {
   Table,
   TableBody,
@@ -15,11 +14,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiClient, type ComplianceResponse, type ComplianceEmployee, type ComplianceWeek, type MonthlyComplianceResponse, type MonthlyComplianceEmployee, type MonthlyComplianceMonth, type QuarterlyComplianceResponse, type QuarterlyComplianceEmployee, type QuarterlyComplianceQuarter } from '@/lib/api';
 import { toast } from 'sonner';
-import { Calendar, CheckCircle2, XCircle, AlertCircle, Loader2, Search } from 'lucide-react';
+import { Calendar, CheckCircle2, XCircle, AlertCircle, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CalculateDialog } from '@/components/calculate-dialog';
 
 const monthNames = [
@@ -28,6 +28,8 @@ const monthNames = [
 ];
 
 type ComplianceType = 'weekly' | 'monthly' | 'quarterly';
+
+const ITEMS_PER_PAGE = 20;
 
 export default function CompliancePage() {
   const [activeTab, setActiveTab] = useState<ComplianceType>('weekly');
@@ -39,29 +41,39 @@ export default function CompliancePage() {
   const [weeklyYear, setWeeklyYear] = useState<number | undefined>(new Date().getFullYear());
   const [weeklyMonth, setWeeklyMonth] = useState<number | undefined>(new Date().getMonth() + 1);
   const [weeklyStatus, setWeeklyStatus] = useState<string>('All');
+  const [weeklyException, setWeeklyException] = useState<string>('All');
   const [weeklySearchQuery, setWeeklySearchQuery] = useState<string>('');
+  const [weeklyPage, setWeeklyPage] = useState(1);
+  const [weeklyTotalPages, setWeeklyTotalPages] = useState(0);
 
   // Monthly compliance state
   const [monthlyCompliance, setMonthlyCompliance] = useState<MonthlyComplianceResponse | null>(null);
   const [monthlyLoading, setMonthlyLoading] = useState(true);
   const [monthlyYear, setMonthlyYear] = useState<number | undefined>(new Date().getFullYear());
   const [monthlyStatus, setMonthlyStatus] = useState<string>('All');
+  const [monthlyException, setMonthlyException] = useState<string>('All');
   const [monthlySearchQuery, setMonthlySearchQuery] = useState<string>('');
+  const [monthlyPage, setMonthlyPage] = useState(1);
+  const [monthlyTotalPages, setMonthlyTotalPages] = useState(0);
 
   // Quarterly compliance state
   const [quarterlyCompliance, setQuarterlyCompliance] = useState<QuarterlyComplianceResponse | null>(null);
   const [quarterlyLoading, setQuarterlyLoading] = useState(true);
   const [quarterlyYear, setQuarterlyYear] = useState<number | undefined>(new Date().getFullYear());
   const [quarterlyStatus, setQuarterlyStatus] = useState<string>('All');
+  const [quarterlyException, setQuarterlyException] = useState<string>('All');
   const [quarterlySearchQuery, setQuarterlySearchQuery] = useState<string>('');
+  const [quarterlyPage, setQuarterlyPage] = useState(1);
+  const [quarterlyTotalPages, setQuarterlyTotalPages] = useState(0);
+  
+  // Exception filter options (fetch from exceptions endpoint)
+  const [exceptionOptions, setExceptionOptions] = useState<string[]>(['All']);
 
   // Calculate dialog state
   const [calculateDialogOpen, setCalculateDialogOpen] = useState(false);
   const [calculateDialogType, setCalculateDialogType] = useState<'monthly' | 'quarterly'>('monthly');
 
-  // Load data based on active tab
   useEffect(() => {
-    // fetch current user to decide admin-only actions visibility
     (async () => {
       try {
         const me = await apiClient.getCurrentUser();
@@ -70,21 +82,96 @@ export default function CompliancePage() {
         setIsAdmin(false);
       }
     })();
+  }, []);
 
+  // Debounced search queries - initialize with empty strings
+  const [debouncedWeeklySearch, setDebouncedWeeklySearch] = useState('');
+  const [debouncedMonthlySearch, setDebouncedMonthlySearch] = useState('');
+  const [debouncedQuarterlySearch, setDebouncedQuarterlySearch] = useState('');
+
+  // Debounce search queries (500ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedWeeklySearch(weeklySearchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [weeklySearchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedMonthlySearch(monthlySearchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [monthlySearchQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuarterlySearch(quarterlySearchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [quarterlySearchQuery]);
+
+  // Fetch exception options from exceptions endpoint
+  useEffect(() => {
+    const fetchExceptionOptions = async () => {
+      try {
+        const response = await apiClient.getExceptions(1, 200);
+        let allExceptions = [...response.exceptions];
+        
+        // If there are more pages, fetch them too
+        if (response.total_pages > 1) {
+          for (let page = 2; page <= response.total_pages; page++) {
+            const pageResponse = await apiClient.getExceptions(page, 200);
+            allExceptions.push(...pageResponse.exceptions);
+          }
+        }
+        
+        const exceptionNames = allExceptions.map(ex => ex.name).sort();
+        setExceptionOptions(['All', 'default', ...exceptionNames]);
+      } catch (error) {
+        console.error('Failed to fetch exception options:', error);
+        setExceptionOptions(['All', 'default']);
+      }
+    };
+    fetchExceptionOptions();
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'weekly') {
-      loadWeeklyCompliance();
-    } else if (activeTab === 'monthly') {
-      loadMonthlyCompliance();
-    } else if (activeTab === 'quarterly') {
-      loadQuarterlyCompliance();
+      setWeeklyPage(1);
+      loadWeeklyCompliance(1);
     }
-  }, [activeTab, weeklyYear, weeklyMonth, weeklyStatus, monthlyYear, monthlyStatus, quarterlyYear, quarterlyStatus]);
+  }, [activeTab, weeklyYear, weeklyMonth, weeklyStatus, weeklyException, debouncedWeeklySearch]);
 
-  const loadWeeklyCompliance = async () => {
+  useEffect(() => {
+    if (activeTab === 'monthly') {
+      setMonthlyPage(1);
+      loadMonthlyCompliance(1);
+    }
+  }, [activeTab, monthlyYear, monthlyStatus, monthlyException, debouncedMonthlySearch]);
+
+  useEffect(() => {
+    if (activeTab === 'quarterly') {
+      setQuarterlyPage(1);
+      loadQuarterlyCompliance(1);
+    }
+  }, [activeTab, quarterlyYear, quarterlyStatus, quarterlyException, debouncedQuarterlySearch]);
+
+  const loadWeeklyCompliance = async (page: number = 1) => {
     try {
       setWeeklyLoading(true);
-      const data = await apiClient.getCompliance(weeklyYear, weeklyMonth, weeklyStatus === 'All' ? undefined : weeklyStatus);
+      const data = await apiClient.getCompliance(
+        weeklyYear,
+        weeklyMonth,
+        weeklyStatus === 'All' ? undefined : weeklyStatus,
+        debouncedWeeklySearch.trim() || undefined,
+        weeklyException !== 'All' ? weeklyException : undefined,
+        page,
+        ITEMS_PER_PAGE
+      );
       setWeeklyCompliance(data);
+      setWeeklyTotalPages(data.total_pages);
+      setWeeklyPage(page);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load weekly compliance records';
       toast.error(errorMessage);
@@ -93,11 +180,20 @@ export default function CompliancePage() {
     }
   };
 
-  const loadMonthlyCompliance = async () => {
+  const loadMonthlyCompliance = async (page: number = 1) => {
     try {
       setMonthlyLoading(true);
-      const data = await apiClient.getMonthlyCompliance(monthlyYear, monthlyStatus === 'All' ? undefined : monthlyStatus);
+      const data = await apiClient.getMonthlyCompliance(
+        monthlyYear,
+        monthlyStatus === 'All' ? undefined : monthlyStatus,
+        debouncedMonthlySearch.trim() || undefined,
+        monthlyException !== 'All' ? monthlyException : undefined,
+        page,
+        ITEMS_PER_PAGE
+      );
       setMonthlyCompliance(data);
+      setMonthlyTotalPages(data.total_pages);
+      setMonthlyPage(page);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load monthly compliance records';
       toast.error(errorMessage);
@@ -106,11 +202,20 @@ export default function CompliancePage() {
     }
   };
 
-  const loadQuarterlyCompliance = async () => {
+  const loadQuarterlyCompliance = async (page: number = 1) => {
     try {
       setQuarterlyLoading(true);
-      const data = await apiClient.getQuarterlyCompliance(quarterlyYear, quarterlyStatus === 'All' ? undefined : quarterlyStatus);
+      const data = await apiClient.getQuarterlyCompliance(
+        quarterlyYear,
+        quarterlyStatus === 'All' ? undefined : quarterlyStatus,
+        debouncedQuarterlySearch.trim() || undefined,
+        quarterlyException !== 'All' ? quarterlyException : undefined,
+        page,
+        ITEMS_PER_PAGE
+      );
       setQuarterlyCompliance(data);
+      setQuarterlyTotalPages(data.total_pages);
+      setQuarterlyPage(page);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load quarterly compliance records';
       toast.error(errorMessage);
@@ -186,42 +291,6 @@ export default function CompliancePage() {
 
   const statuses = ['All', 'Active', 'Inactive'];
 
-  // Filter functions
-  const filterWeeklyEmployees = (employees: ComplianceEmployee[]) => {
-    if (!weeklySearchQuery.trim()) return employees;
-    const query = weeklySearchQuery.toLowerCase();
-    return employees.filter((employee) => (
-      employee.employee_id.toLowerCase().includes(query) ||
-      employee.employee_name.toLowerCase().includes(query) ||
-      (employee.reporting_manager_name && employee.reporting_manager_name.toLowerCase().includes(query)) ||
-      (employee.vertical_head_name && employee.vertical_head_name.toLowerCase().includes(query)) ||
-      (employee.vertical && employee.vertical.toLowerCase().includes(query))
-    ));
-  };
-
-  const filterMonthlyEmployees = (employees: MonthlyComplianceEmployee[]) => {
-    if (!monthlySearchQuery.trim()) return employees;
-    const query = monthlySearchQuery.toLowerCase();
-    return employees.filter((employee) => (
-      employee.employee_id.toLowerCase().includes(query) ||
-      employee.employee_name.toLowerCase().includes(query) ||
-      (employee.reporting_manager_name && employee.reporting_manager_name.toLowerCase().includes(query)) ||
-      (employee.vertical_head_name && employee.vertical_head_name.toLowerCase().includes(query)) ||
-      (employee.vertical && employee.vertical.toLowerCase().includes(query))
-    ));
-  };
-
-  const filterQuarterlyEmployees = (employees: QuarterlyComplianceEmployee[]) => {
-    if (!quarterlySearchQuery.trim()) return employees;
-    const query = quarterlySearchQuery.toLowerCase();
-    return employees.filter((employee) => (
-      employee.employee_id.toLowerCase().includes(query) ||
-      employee.employee_name.toLowerCase().includes(query) ||
-      (employee.reporting_manager_name && employee.reporting_manager_name.toLowerCase().includes(query)) ||
-      (employee.vertical_head_name && employee.vertical_head_name.toLowerCase().includes(query)) ||
-      (employee.vertical && employee.vertical.toLowerCase().includes(query))
-    ));
-  };
 
   const renderEmployeeTooltip = (employee: ComplianceEmployee | MonthlyComplianceEmployee | QuarterlyComplianceEmployee) => (
     <TooltipContent className="max-w-md">
@@ -259,7 +328,6 @@ export default function CompliancePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
-        <Navbar />
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
             <CardHeader>
@@ -288,31 +356,39 @@ export default function CompliancePage() {
                     <Calendar className="h-4 w-4" />
                     <span>
                       Total: {weeklyCompliance?.total || 0} employees
-                      {weeklySearchQuery && filterWeeklyEmployees(weeklyCompliance?.employees || []).length !== weeklyCompliance?.employees.length && (
-                        <span className="ml-2">(showing {filterWeeklyEmployees(weeklyCompliance?.employees || []).length} filtered)</span>
+                      {weeklySearchQuery && weeklyLoading && (
+                        <span className="ml-2 text-blue-600">(searching...)</span>
+                      )}
+                      {weeklySearchQuery && !weeklyLoading && weeklyCompliance && (
+                        <span className="ml-2 text-slate-500">(filtered)</span>
                       )}
                     </span>
                   </div>
 
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Search employees by ID, name, reporting manager, vertical head, or vertical..."
-                      value={weeklySearchQuery}
-                      onChange={(e) => setWeeklySearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
+                  {/* Search + Filters */}
+                  <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="weekly-search">Search</Label>
+                      <div className="relative h-11">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                        <Input
+                          id="weekly-search"
+                          type="text"
+                          placeholder="Employee ID or Name"
+                          value={weeklySearchQuery}
+                          onChange={(e) => setWeeklySearchQuery(e.target.value)}
+                          className="pl-10 h-11 w-full text-sm py-2"
+                        />
+                      </div>
+                    </div>
 
-                  <div className="flex gap-4 items-end">
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Year</label>
+                    <div className="flex flex-col gap-1">
+                      <Label>Year</Label>
                       <Select
                         value={weeklyYear?.toString() || ''}
                         onValueChange={(value) => setWeeklyYear(value ? parseInt(value) : undefined)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 w-full">
                           <SelectValue placeholder="Select year" />
                         </SelectTrigger>
                         <SelectContent>
@@ -322,13 +398,14 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Month</label>
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Month</Label>
                       <Select
                         value={weeklyMonth?.toString() || ''}
                         onValueChange={(value) => setWeeklyMonth(value ? parseInt(value) : undefined)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 w-full">
                           <SelectValue placeholder="Select month" />
                         </SelectTrigger>
                         <SelectContent>
@@ -340,11 +417,12 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Status</label>
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Status</Label>
                       <Select value={weeklyStatus} onValueChange={setWeeklyStatus}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue placeholder="All" />
                         </SelectTrigger>
                         <SelectContent>
                           {statuses.map((s) => (
@@ -353,9 +431,20 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={loadWeeklyCompliance} variant="outline" className="h-11 border-2">
-                      Refresh
-                    </Button>
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Exception</Label>
+                      <Select value={weeklyException} onValueChange={setWeeklyException}>
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {exceptionOptions.map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {weeklyLoading ? (
@@ -373,7 +462,7 @@ export default function CompliancePage() {
                       </div>
                       <h4 className="text-lg font-semibold text-foreground mb-2">No weekly compliance records found</h4>
                     </div>
-                  ) : filterWeeklyEmployees(weeklyCompliance.employees).length === 0 ? (
+                  ) : weeklyCompliance.employees.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <Search className="h-16 w-16 text-muted-foreground/40" />
@@ -454,10 +543,15 @@ export default function CompliancePage() {
                         </div>
                       )}
 
-                      {((weeklyCompliance.reportees && weeklyCompliance.reportees.length > 0) || (!weeklyCompliance.current_employee && filterWeeklyEmployees(weeklyCompliance.employees).length > 0)) && (
-                        <div>
+                      {((weeklyCompliance.reportees && weeklyCompliance.reportees.length > 0) || (!weeklyCompliance.current_employee && weeklyCompliance.employees.length > 0)) && (
+                        <div className="mt-8">
                           <h3 className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-100">
                             {weeklyCompliance.current_employee ? 'Reportees Compliance' : 'All Employees'}
+                            {weeklyCompliance.current_employee && (
+                              <span className="text-sm font-normal text-slate-500 ml-2">
+                                (Search & filters apply to reportees only)
+                              </span>
+                            )}
                           </h3>
                           <div className="overflow-x-auto">
                             <Table>
@@ -473,7 +567,7 @@ export default function CompliancePage() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {(weeklyCompliance.reportees || filterWeeklyEmployees(weeklyCompliance.employees)).map((employee) => (
+                                {(weeklyCompliance.reportees || weeklyCompliance.employees).map((employee) => (
                                   <TableRow key={employee.employee_id}>
                                     <TableCell className="font-mono text-sm">
                                       <TooltipProvider>
@@ -528,6 +622,34 @@ export default function CompliancePage() {
                       )}
                     </div>
                   )}
+                  
+                  {weeklyTotalPages > 1 && weeklyCompliance?.current_employee && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        Page {weeklyPage} of {weeklyTotalPages} ({weeklyCompliance?.total || 0} total reportees)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadWeeklyCompliance(Math.max(1, weeklyPage - 1))}
+                          disabled={weeklyPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadWeeklyCompliance(Math.min(weeklyTotalPages, weeklyPage + 1))}
+                          disabled={weeklyPage === weeklyTotalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Monthly Compliance Tab */}
@@ -536,31 +658,39 @@ export default function CompliancePage() {
                     <Calendar className="h-4 w-4" />
                     <span>
                       Total: {monthlyCompliance?.total || 0} employees
-                      {monthlySearchQuery && filterMonthlyEmployees(monthlyCompliance?.employees || []).length !== monthlyCompliance?.employees.length && (
-                        <span className="ml-2">(showing {filterMonthlyEmployees(monthlyCompliance?.employees || []).length} filtered)</span>
+                      {monthlySearchQuery && monthlyLoading && (
+                        <span className="ml-2 text-blue-600">(searching...)</span>
+                      )}
+                      {monthlySearchQuery && !monthlyLoading && monthlyCompliance && (
+                        <span className="ml-2 text-slate-500">(filtered)</span>
                       )}
                     </span>
                   </div>
 
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Search employees by ID, name, reporting manager, vertical head, or vertical..."
-                      value={monthlySearchQuery}
-                      onChange={(e) => setMonthlySearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
+                  {/* Search + Filters */}
+                  <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="monthly-search">Search</Label>
+                      <div className="relative h-11">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                        <Input
+                          id="monthly-search"
+                          type="text"
+                          placeholder="Employee ID or Name"
+                          value={monthlySearchQuery}
+                          onChange={(e) => setMonthlySearchQuery(e.target.value)}
+                          className="pl-10 h-11 w-full text-sm py-2"
+                        />
+                      </div>
+                    </div>
 
-                  <div className="flex gap-4 items-end">
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Year</label>
+                    <div className="flex flex-col gap-1">
+                      <Label>Year</Label>
                       <Select
                         value={monthlyYear?.toString() || ''}
                         onValueChange={(value) => setMonthlyYear(value ? parseInt(value) : undefined)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 w-full">
                           <SelectValue placeholder="Select year" />
                         </SelectTrigger>
                         <SelectContent>
@@ -570,11 +700,12 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Status</label>
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Status</Label>
                       <Select value={monthlyStatus} onValueChange={setMonthlyStatus}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue placeholder="All" />
                         </SelectTrigger>
                         <SelectContent>
                           {statuses.map((s) => (
@@ -583,18 +714,32 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={loadMonthlyCompliance} variant="outline" className="h-11 border-2">
-                      Refresh
-                    </Button>
-                    {isAdmin && (
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Exception</Label>
+                      <Select value={monthlyException} onValueChange={setMonthlyException}>
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {exceptionOptions.map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {isAdmin && (
+                    <div className="mb-4 flex justify-end">
                       <Button 
                         onClick={handleCalculateMonthly}
                         className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-11"
                       >
                         Calculate New
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {monthlyLoading ? (
                     <div className="flex items-center justify-center py-12">
@@ -611,7 +756,7 @@ export default function CompliancePage() {
                       </div>
                       <h4 className="text-lg font-semibold text-foreground mb-2">No monthly compliance records found</h4>
                     </div>
-                  ) : filterMonthlyEmployees(monthlyCompliance.employees).length === 0 ? (
+                  ) : monthlyCompliance.employees.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <Search className="h-16 w-16 text-muted-foreground/40" />
@@ -692,10 +837,15 @@ export default function CompliancePage() {
                         </div>
                       )}
 
-                      {((monthlyCompliance.reportees && monthlyCompliance.reportees.length > 0) || (!monthlyCompliance.current_employee && filterMonthlyEmployees(monthlyCompliance.employees).length > 0)) && (
-                        <div>
+                      {((monthlyCompliance.reportees && monthlyCompliance.reportees.length > 0) || (!monthlyCompliance.current_employee && monthlyCompliance.employees.length > 0)) && (
+                        <div className="mt-8">
                           <h3 className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-100">
                             {monthlyCompliance.current_employee ? 'Reportees Compliance' : 'All Employees'}
+                            {monthlyCompliance.current_employee && (
+                              <span className="text-sm font-normal text-slate-500 ml-2">
+                                (Search & filters apply to reportees only)
+                              </span>
+                            )}
                           </h3>
                           <div className="overflow-x-auto">
                             <Table>
@@ -711,7 +861,7 @@ export default function CompliancePage() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {(monthlyCompliance.reportees || filterMonthlyEmployees(monthlyCompliance.employees)).map((employee) => (
+                                {(monthlyCompliance.reportees || monthlyCompliance.employees).map((employee) => (
                                   <TableRow key={employee.employee_id}>
                                     <TableCell className="font-mono text-sm">
                                       <TooltipProvider>
@@ -766,6 +916,34 @@ export default function CompliancePage() {
                       )}
                     </div>
                   )}
+                  
+                  {monthlyTotalPages > 1 && monthlyCompliance?.current_employee && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        Page {monthlyPage} of {monthlyTotalPages} ({monthlyCompliance?.total || 0} total reportees)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadMonthlyCompliance(Math.max(1, monthlyPage - 1))}
+                          disabled={monthlyPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadMonthlyCompliance(Math.min(monthlyTotalPages, monthlyPage + 1))}
+                          disabled={monthlyPage === monthlyTotalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Quarterly Compliance Tab */}
@@ -774,31 +952,39 @@ export default function CompliancePage() {
                     <Calendar className="h-4 w-4" />
                     <span>
                       Total: {quarterlyCompliance?.total || 0} employees
-                      {quarterlySearchQuery && filterQuarterlyEmployees(quarterlyCompliance?.employees || []).length !== quarterlyCompliance?.employees.length && (
-                        <span className="ml-2">(showing {filterQuarterlyEmployees(quarterlyCompliance?.employees || []).length} filtered)</span>
+                      {quarterlySearchQuery && quarterlyLoading && (
+                        <span className="ml-2 text-blue-600">(searching...)</span>
+                      )}
+                      {quarterlySearchQuery && !quarterlyLoading && quarterlyCompliance && (
+                        <span className="ml-2 text-slate-500">(filtered)</span>
                       )}
                     </span>
                   </div>
 
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Search employees by ID, name, reporting manager, vertical head, or vertical..."
-                      value={quarterlySearchQuery}
-                      onChange={(e) => setQuarterlySearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
+                  {/* Search + Filters */}
+                  <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="quarterly-search">Search</Label>
+                      <div className="relative h-11">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                        <Input
+                          id="quarterly-search"
+                          type="text"
+                          placeholder="Employee ID or Name"
+                          value={quarterlySearchQuery}
+                          onChange={(e) => setQuarterlySearchQuery(e.target.value)}
+                          className="pl-10 h-11 w-full text-sm py-2"
+                        />
+                      </div>
+                    </div>
 
-                  <div className="flex gap-4 items-end">
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Year</label>
+                    <div className="flex flex-col gap-1">
+                      <Label>Year</Label>
                       <Select
                         value={quarterlyYear?.toString() || ''}
                         onValueChange={(value) => setQuarterlyYear(value ? parseInt(value) : undefined)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 w-full">
                           <SelectValue placeholder="Select year" />
                         </SelectTrigger>
                         <SelectContent>
@@ -808,11 +994,12 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex-1">
-                      <label className="text-sm font-medium mb-2 block">Status</label>
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Status</Label>
                       <Select value={quarterlyStatus} onValueChange={setQuarterlyStatus}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue placeholder="All" />
                         </SelectTrigger>
                         <SelectContent>
                           {statuses.map((s) => (
@@ -821,18 +1008,32 @@ export default function CompliancePage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={loadQuarterlyCompliance} variant="outline" className="h-11 border-2">
-                      Refresh
-                    </Button>
-                    {isAdmin && (
+
+                    <div className="flex flex-col gap-1">
+                      <Label>Exception</Label>
+                      <Select value={quarterlyException} onValueChange={setQuarterlyException}>
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {exceptionOptions.map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {isAdmin && (
+                    <div className="mb-4 flex justify-end">
                       <Button 
                         onClick={handleCalculateQuarterly}
                         className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 h-11"
                       >
                         Calculate New
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {quarterlyLoading ? (
                     <div className="flex items-center justify-center py-12">
@@ -849,7 +1050,7 @@ export default function CompliancePage() {
                       </div>
                       <h4 className="text-lg font-semibold text-foreground mb-2">No quarterly compliance records found</h4>
                     </div>
-                  ) : filterQuarterlyEmployees(quarterlyCompliance.employees).length === 0 ? (
+                  ) : quarterlyCompliance.employees.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <Search className="h-16 w-16 text-muted-foreground/40" />
@@ -930,10 +1131,15 @@ export default function CompliancePage() {
                         </div>
                       )}
 
-                      {((quarterlyCompliance.reportees && quarterlyCompliance.reportees.length > 0) || (!quarterlyCompliance.current_employee && filterQuarterlyEmployees(quarterlyCompliance.employees).length > 0)) && (
-                        <div>
+                      {((quarterlyCompliance.reportees && quarterlyCompliance.reportees.length > 0) || (!quarterlyCompliance.current_employee && quarterlyCompliance.employees.length > 0)) && (
+                        <div className="mt-8">
                           <h3 className="text-lg font-semibold mb-4 text-slate-900 dark:text-slate-100">
                             {quarterlyCompliance.current_employee ? 'Reportees Compliance' : 'All Employees'}
+                            {quarterlyCompliance.current_employee && (
+                              <span className="text-sm font-normal text-slate-500 ml-2">
+                                (Search & filters apply to reportees only)
+                              </span>
+                            )}
                           </h3>
                           <div className="overflow-x-auto">
                             <Table>
@@ -949,7 +1155,7 @@ export default function CompliancePage() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {(quarterlyCompliance.reportees || filterQuarterlyEmployees(quarterlyCompliance.employees)).map((employee) => (
+                                {(quarterlyCompliance.reportees || quarterlyCompliance.employees).map((employee) => (
                                   <TableRow key={employee.employee_id}>
                                     <TableCell className="font-mono text-sm">
                                       <TooltipProvider>
@@ -1002,6 +1208,34 @@ export default function CompliancePage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+                  
+                  {quarterlyTotalPages > 1 && quarterlyCompliance?.current_employee && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="text-sm text-slate-600 dark:text-slate-400">
+                        Page {quarterlyPage} of {quarterlyTotalPages} ({quarterlyCompliance?.total || 0} total reportees)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadQuarterlyCompliance(Math.max(1, quarterlyPage - 1))}
+                          disabled={quarterlyPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loadQuarterlyCompliance(Math.min(quarterlyTotalPages, quarterlyPage + 1))}
+                          disabled={quarterlyPage === quarterlyTotalPages}
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </TabsContent>

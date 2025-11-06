@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
-import { Navbar } from '@/components/layout/navbar';
 import {
   Table,
   TableBody,
@@ -85,7 +84,6 @@ export default function QuarterlyCompliancePage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <Navbar />
         <div className="container mx-auto px-4 py-8">
           <Card>
             <CardHeader>

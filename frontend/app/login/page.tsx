@@ -26,7 +26,7 @@ export default function LoginPage() {
     try {
       await apiClient.login({ username, password });
       toast.success('Login successful!');
-      router.push('/employees');
+      router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       toast.error(err instanceof Error ? err.message : 'Login failed');
@@ -56,7 +56,7 @@ export default function LoginPage() {
             </CardTitle>
           </div>
           <CardDescription className="text-base text-muted-foreground">
-            Welcome back! Sign in to manage workforce attendance & compliance
+            Sign in to manage workforce attendance & compliance
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
