@@ -1,9 +1,0 @@
-{
-  "/attendance/page": "app/attendance/page.js",
-  "/compliance/page": "app/compliance/page.js",
-  "/employees/page": "app/employees/page.js",
-  "/exceptions/page": "app/exceptions/page.js",
-  "/login/page": "app/login/page.js",
-  "/page": "app/page.js",
-  "/upload/page": "app/upload/page.js"
-}
