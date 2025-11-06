@@ -623,10 +623,10 @@ export default function CompliancePage() {
                     </div>
                   )}
                   
-                  {weeklyTotalPages > 1 && weeklyCompliance?.current_employee && (
+                  {weeklyTotalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t">
                       <div className="text-sm text-slate-600 dark:text-slate-400">
-                        Page {weeklyPage} of {weeklyTotalPages} ({weeklyCompliance?.total || 0} total reportees)
+                        Page {weeklyPage} of {weeklyTotalPages} ({weeklyCompliance?.total || 0} total {weeklyCompliance?.current_employee ? 'reportees' : 'employees'})
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -917,10 +917,10 @@ export default function CompliancePage() {
                     </div>
                   )}
                   
-                  {monthlyTotalPages > 1 && monthlyCompliance?.current_employee && (
+                  {monthlyTotalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t">
                       <div className="text-sm text-slate-600 dark:text-slate-400">
-                        Page {monthlyPage} of {monthlyTotalPages} ({monthlyCompliance?.total || 0} total reportees)
+                        Page {monthlyPage} of {monthlyTotalPages} ({monthlyCompliance?.total || 0} total {monthlyCompliance?.current_employee ? 'reportees' : 'employees'})
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -1211,10 +1211,10 @@ export default function CompliancePage() {
                     </div>
                   )}
                   
-                  {quarterlyTotalPages > 1 && quarterlyCompliance?.current_employee && (
+                  {quarterlyTotalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t">
                       <div className="text-sm text-slate-600 dark:text-slate-400">
-                        Page {quarterlyPage} of {quarterlyTotalPages} ({quarterlyCompliance?.total || 0} total reportees)
+                        Page {quarterlyPage} of {quarterlyTotalPages} ({quarterlyCompliance?.total || 0} total {quarterlyCompliance?.current_employee ? 'reportees' : 'employees'})
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
