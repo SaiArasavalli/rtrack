@@ -41,7 +41,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # Next.js
-/.next/
+.next/
 /out/
 next-env.d.ts
 *.tsbuildinfo
