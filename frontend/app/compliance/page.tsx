@@ -366,86 +366,98 @@ export default function CompliancePage() {
                   </div>
 
                   {/* Search + Filters */}
-                  <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor="weekly-search">Search</Label>
-                      <div className="relative h-11">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
-                        <Input
-                          id="weekly-search"
-                          type="text"
-                          placeholder="Employee ID or Name"
-                          value={weeklySearchQuery}
-                          onChange={(e) => setWeeklySearchQuery(e.target.value)}
-                          className="pl-10 h-11 w-full text-sm py-2"
-                        />
+                  {(() => {
+                    const hasReportees = !weeklyCompliance?.current_employee || weeklyCompliance?.total > 0 || (weeklyCompliance?.reportees && weeklyCompliance.reportees.length > 0);
+                    const hasActiveFilters = debouncedWeeklySearch.trim() || weeklyStatus !== 'All' || weeklyException !== 'All';
+                    const showStatusException = hasReportees || hasActiveFilters;
+                    return (
+                      <div className={`mb-4 grid grid-cols-1 gap-4 ${weeklyCompliance?.current_employee && !showStatusException ? 'md:grid-cols-3' : 'md:grid-cols-5'}`}>
+                        <div className="flex flex-col gap-1">
+                          <Label htmlFor="weekly-search">Search</Label>
+                          <div className="relative h-11">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                            <Input
+                              id="weekly-search"
+                              type="text"
+                              placeholder="Employee ID or Name"
+                              value={weeklySearchQuery}
+                              onChange={(e) => setWeeklySearchQuery(e.target.value)}
+                              className="pl-10 h-11 w-full text-sm py-2"
+                              disabled={weeklyCompliance?.current_employee && !showStatusException}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Year</Label>
+                          <Select
+                            value={weeklyYear?.toString() || ''}
+                            onValueChange={(value) => setWeeklyYear(value ? parseInt(value) : undefined)}
+                          >
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="Select year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Month</Label>
+                          <Select
+                            value={weeklyMonth?.toString() || ''}
+                            onValueChange={(value) => setWeeklyMonth(value ? parseInt(value) : undefined)}
+                          >
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="Select month" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {monthNames.map((name, index) => (
+                                <SelectItem key={index + 1} value={(index + 1).toString()}>
+                                  {name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {showStatusException && (
+                      <>
+                        <div className="flex flex-col gap-1">
+                          <Label>Status</Label>
+                          <Select value={weeklyStatus} onValueChange={setWeeklyStatus}>
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statuses.map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Exception</Label>
+                          <Select value={weeklyException} onValueChange={setWeeklyException}>
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {exceptionOptions.map((opt) => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
                       </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Year</Label>
-                      <Select
-                        value={weeklyYear?.toString() || ''}
-                        onValueChange={(value) => setWeeklyYear(value ? parseInt(value) : undefined)}
-                      >
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                            <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Month</Label>
-                      <Select
-                        value={weeklyMonth?.toString() || ''}
-                        onValueChange={(value) => setWeeklyMonth(value ? parseInt(value) : undefined)}
-                      >
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="Select month" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {monthNames.map((name, index) => (
-                            <SelectItem key={index + 1} value={(index + 1).toString()}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Status</Label>
-                      <Select value={weeklyStatus} onValueChange={setWeeklyStatus}>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statuses.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Exception</Label>
-                      <Select value={weeklyException} onValueChange={setWeeklyException}>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {exceptionOptions.map((opt) => (
-                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {weeklyLoading ? (
                     <div className="flex items-center justify-center py-12">
@@ -454,7 +466,7 @@ export default function CompliancePage() {
                         <p className="text-sm text-muted-foreground font-medium">Loading compliance data...</p>
                       </div>
                     </div>
-                  ) : !weeklyCompliance || weeklyCompliance.employees.length === 0 ? (
+                  ) : !weeklyCompliance || (!weeklyCompliance.current_employee && weeklyCompliance.employees.length === 0) ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <CheckCircle2 className="h-16 w-16 text-muted-foreground/40" />
@@ -462,7 +474,7 @@ export default function CompliancePage() {
                       </div>
                       <h4 className="text-lg font-semibold text-foreground mb-2">No weekly compliance records found</h4>
                     </div>
-                  ) : weeklyCompliance.employees.length === 0 ? (
+                  ) : weeklyCompliance.current_employee && weeklyCompliance.employees.length === 0 && (!weeklyCompliance.reportees || weeklyCompliance.reportees.length === 0) && (debouncedWeeklySearch.trim() || weeklyStatus !== 'All' || weeklyException !== 'All') ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <Search className="h-16 w-16 text-muted-foreground/40" />
@@ -668,67 +680,79 @@ export default function CompliancePage() {
                   </div>
 
                   {/* Search + Filters */}
-                  <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor="monthly-search">Search</Label>
-                      <div className="relative h-11">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
-                        <Input
-                          id="monthly-search"
-                          type="text"
-                          placeholder="Employee ID or Name"
-                          value={monthlySearchQuery}
-                          onChange={(e) => setMonthlySearchQuery(e.target.value)}
-                          className="pl-10 h-11 w-full text-sm py-2"
-                        />
+                  {(() => {
+                    const hasReportees = !monthlyCompliance?.current_employee || monthlyCompliance?.total > 0 || (monthlyCompliance?.reportees && monthlyCompliance.reportees.length > 0);
+                    const hasActiveFilters = debouncedMonthlySearch.trim() || monthlyStatus !== 'All' || monthlyException !== 'All';
+                    const showStatusException = hasReportees || hasActiveFilters;
+                    return (
+                      <div className={`mb-4 grid grid-cols-1 gap-4 ${monthlyCompliance?.current_employee && !showStatusException ? 'md:grid-cols-2' : 'md:grid-cols-4'}`}>
+                        <div className="flex flex-col gap-1">
+                          <Label htmlFor="monthly-search">Search</Label>
+                          <div className="relative h-11">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                            <Input
+                              id="monthly-search"
+                              type="text"
+                              placeholder="Employee ID or Name"
+                              value={monthlySearchQuery}
+                              onChange={(e) => setMonthlySearchQuery(e.target.value)}
+                              className="pl-10 h-11 w-full text-sm py-2"
+                              disabled={monthlyCompliance?.current_employee && !showStatusException}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Year</Label>
+                          <Select
+                            value={monthlyYear?.toString() || ''}
+                            onValueChange={(value) => setMonthlyYear(value ? parseInt(value) : undefined)}
+                          >
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="Select year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {showStatusException && (
+                      <>
+                        <div className="flex flex-col gap-1">
+                          <Label>Status</Label>
+                          <Select value={monthlyStatus} onValueChange={setMonthlyStatus}>
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statuses.map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Exception</Label>
+                          <Select value={monthlyException} onValueChange={setMonthlyException}>
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {exceptionOptions.map((opt) => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
                       </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Year</Label>
-                      <Select
-                        value={monthlyYear?.toString() || ''}
-                        onValueChange={(value) => setMonthlyYear(value ? parseInt(value) : undefined)}
-                      >
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                            <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Status</Label>
-                      <Select value={monthlyStatus} onValueChange={setMonthlyStatus}>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statuses.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Exception</Label>
-                      <Select value={monthlyException} onValueChange={setMonthlyException}>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {exceptionOptions.map((opt) => (
-                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {isAdmin && (
                     <div className="mb-4 flex justify-end">
@@ -748,7 +772,7 @@ export default function CompliancePage() {
                         <p className="text-sm text-muted-foreground font-medium">Loading compliance data...</p>
                       </div>
                     </div>
-                  ) : !monthlyCompliance || monthlyCompliance.employees.length === 0 ? (
+                  ) : !monthlyCompliance || (!monthlyCompliance.current_employee && monthlyCompliance.employees.length === 0) ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <CheckCircle2 className="h-16 w-16 text-muted-foreground/40" />
@@ -756,7 +780,7 @@ export default function CompliancePage() {
                       </div>
                       <h4 className="text-lg font-semibold text-foreground mb-2">No monthly compliance records found</h4>
                     </div>
-                  ) : monthlyCompliance.employees.length === 0 ? (
+                  ) : monthlyCompliance.current_employee && monthlyCompliance.employees.length === 0 && (!monthlyCompliance.reportees || monthlyCompliance.reportees.length === 0) && (debouncedMonthlySearch.trim() || monthlyStatus !== 'All' || monthlyException !== 'All') ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <Search className="h-16 w-16 text-muted-foreground/40" />
@@ -962,67 +986,79 @@ export default function CompliancePage() {
                   </div>
 
                   {/* Search + Filters */}
-                  <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="flex flex-col gap-1">
-                      <Label htmlFor="quarterly-search">Search</Label>
-                      <div className="relative h-11">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
-                        <Input
-                          id="quarterly-search"
-                          type="text"
-                          placeholder="Employee ID or Name"
-                          value={quarterlySearchQuery}
-                          onChange={(e) => setQuarterlySearchQuery(e.target.value)}
-                          className="pl-10 h-11 w-full text-sm py-2"
-                        />
+                  {(() => {
+                    const hasReportees = !quarterlyCompliance?.current_employee || quarterlyCompliance?.total > 0 || (quarterlyCompliance?.reportees && quarterlyCompliance.reportees.length > 0);
+                    const hasActiveFilters = debouncedQuarterlySearch.trim() || quarterlyStatus !== 'All' || quarterlyException !== 'All';
+                    const showStatusException = hasReportees || hasActiveFilters;
+                    return (
+                      <div className={`mb-4 grid grid-cols-1 gap-4 ${quarterlyCompliance?.current_employee && !showStatusException ? 'md:grid-cols-2' : 'md:grid-cols-4'}`}>
+                        <div className="flex flex-col gap-1">
+                          <Label htmlFor="quarterly-search">Search</Label>
+                          <div className="relative h-11">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                            <Input
+                              id="quarterly-search"
+                              type="text"
+                              placeholder="Employee ID or Name"
+                              value={quarterlySearchQuery}
+                              onChange={(e) => setQuarterlySearchQuery(e.target.value)}
+                              className="pl-10 h-11 w-full text-sm py-2"
+                              disabled={quarterlyCompliance?.current_employee && !showStatusException}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Year</Label>
+                          <Select
+                            value={quarterlyYear?.toString() || ''}
+                            onValueChange={(value) => setQuarterlyYear(value ? parseInt(value) : undefined)}
+                          >
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="Select year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {showStatusException && (
+                      <>
+                        <div className="flex flex-col gap-1">
+                          <Label>Status</Label>
+                          <Select value={quarterlyStatus} onValueChange={setQuarterlyStatus}>
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statuses.map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <Label>Exception</Label>
+                          <Select value={quarterlyException} onValueChange={setQuarterlyException}>
+                            <SelectTrigger className="h-11 w-full">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {exceptionOptions.map((opt) => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
                       </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Year</Label>
-                      <Select
-                        value={quarterlyYear?.toString() || ''}
-                        onValueChange={(value) => setQuarterlyYear(value ? parseInt(value) : undefined)}
-                      >
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="Select year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                            <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Status</Label>
-                      <Select value={quarterlyStatus} onValueChange={setQuarterlyStatus}>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statuses.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <Label>Exception</Label>
-                      <Select value={quarterlyException} onValueChange={setQuarterlyException}>
-                        <SelectTrigger className="h-11 w-full">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {exceptionOptions.map((opt) => (
-                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {isAdmin && (
                     <div className="mb-4 flex justify-end">
@@ -1042,7 +1078,7 @@ export default function CompliancePage() {
                         <p className="text-sm text-muted-foreground font-medium">Loading compliance data...</p>
                       </div>
                     </div>
-                  ) : !quarterlyCompliance || quarterlyCompliance.employees.length === 0 ? (
+                  ) : !quarterlyCompliance || (!quarterlyCompliance.current_employee && quarterlyCompliance.employees.length === 0) ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <CheckCircle2 className="h-16 w-16 text-muted-foreground/40" />
@@ -1050,7 +1086,7 @@ export default function CompliancePage() {
                       </div>
                       <h4 className="text-lg font-semibold text-foreground mb-2">No quarterly compliance records found</h4>
                     </div>
-                  ) : quarterlyCompliance.employees.length === 0 ? (
+                  ) : quarterlyCompliance.current_employee && quarterlyCompliance.employees.length === 0 && (!quarterlyCompliance.reportees || quarterlyCompliance.reportees.length === 0) && (debouncedQuarterlySearch.trim() || quarterlyStatus !== 'All' || quarterlyException !== 'All') ? (
                     <div className="text-center py-16">
                       <div className="relative mb-4 inline-block">
                         <Search className="h-16 w-16 text-muted-foreground/40" />

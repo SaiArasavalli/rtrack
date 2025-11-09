@@ -84,6 +84,7 @@ async def get_compliance(
     # For non-admin users, fetch current_employee data separately (without search/filters/pagination)
     current_employee_data = None
     current_employee_records = []
+    current_employee_weeks = []
     
     if not is_admin(current_employee.employee_id):
         # Fetch current employee's data separately (no search/filters/pagination)
@@ -112,7 +113,7 @@ async def get_compliance(
         
         current_employee_records = session.exec(current_emp_statement).all()
         if current_employee_records:
-            current_emp_dict, _ = build_employee_dict(current_employee_records)
+            current_emp_dict, current_employee_weeks = build_employee_dict(current_employee_records)
             current_employee_data = current_emp_dict.get(current_employee.employee_id)
     
     # Fetch reportees data with search/filters/pagination
@@ -128,14 +129,14 @@ async def get_compliance(
         if reportee_ids:
             reportee_statement = reportee_statement.where(WeeklyCompliance.employee_id.in_(reportee_ids))
         else:
-            # No reportees, return empty result
+            # No reportees, return current employee data only
             return {
                 "total": 0,
                 "page": page,
                 "page_size": page_size,
                 "total_pages": 0,
                 "employees": [],
-                "weeks": [],
+                "weeks": current_employee_weeks,
                 "current_employee": current_employee_data,
                 "reportees": []
             }
@@ -357,6 +358,7 @@ async def get_monthly_compliance(
     # For non-admin users, fetch current_employee data separately (without search/filters/pagination)
     current_employee_data = None
     current_employee_records = []
+    current_employee_months = []
     
     if not is_admin(current_employee.employee_id):
         # Fetch current employee's data separately (no search/filters/pagination)
@@ -369,7 +371,7 @@ async def get_monthly_compliance(
         
         current_employee_records = session.exec(current_emp_statement).all()
         if current_employee_records:
-            current_emp_dict, _ = build_employee_dict(current_employee_records)
+            current_emp_dict, current_employee_months = build_employee_dict(current_employee_records)
             current_employee_data = current_emp_dict.get(current_employee.employee_id)
     
     # Fetch reportees data with search/filters/pagination
@@ -385,14 +387,14 @@ async def get_monthly_compliance(
         if reportee_ids:
             reportee_statement = reportee_statement.where(MonthlyCompliance.employee_id.in_(reportee_ids))
         else:
-            # No reportees, return empty result
+            # No reportees, return current employee data only
             return {
                 "total": 0,
                 "page": page,
                 "page_size": page_size,
                 "total_pages": 0,
                 "employees": [],
-                "months": [],
+                "months": current_employee_months,
                 "current_employee": current_employee_data,
                 "reportees": []
             }
@@ -537,6 +539,7 @@ async def get_quarterly_compliance(
     # For non-admin users, fetch current_employee data separately (without search/filters/pagination)
     current_employee_data = None
     current_employee_records = []
+    current_employee_quarters = []
     
     if not is_admin(current_employee.employee_id):
         # Fetch current employee's data separately (no search/filters/pagination)
@@ -549,7 +552,7 @@ async def get_quarterly_compliance(
         
         current_employee_records = session.exec(current_emp_statement).all()
         if current_employee_records:
-            current_emp_dict, _ = build_employee_dict(current_employee_records)
+            current_emp_dict, current_employee_quarters = build_employee_dict(current_employee_records)
             current_employee_data = current_emp_dict.get(current_employee.employee_id)
     
     # Fetch reportees data with search/filters/pagination
@@ -565,14 +568,14 @@ async def get_quarterly_compliance(
         if reportee_ids:
             reportee_statement = reportee_statement.where(QuarterlyCompliance.employee_id.in_(reportee_ids))
         else:
-            # No reportees, return empty result
+            # No reportees, return current employee data only
             return {
                 "total": 0,
                 "page": page,
                 "page_size": page_size,
                 "total_pages": 0,
                 "employees": [],
-                "quarters": [],
+                "quarters": current_employee_quarters,
                 "current_employee": current_employee_data,
                 "reportees": []
             }
