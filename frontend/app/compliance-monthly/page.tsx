@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/protected-route';
 import {
   Table,
@@ -20,6 +21,7 @@ import { toast } from 'sonner';
 import { Calendar, CheckCircle2, XCircle, Loader2, Search } from 'lucide-react';
 
 export default function MonthlyCompliancePage() {
+  const router = useRouter();
   const [compliance, setCompliance] = useState<MonthlyComplianceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [year, setYear] = useState<number | undefined>(new Date().getFullYear());
@@ -153,7 +155,7 @@ export default function MonthlyCompliancePage() {
                   Refresh
                 </Button>
                 <Button 
-                  onClick={() => window.location.href = '/compliance-monthly-calculate'}
+                  onClick={() => router.push('/compliance-monthly-calculate')}
                   variant="default"
                 >
                   Calculate New

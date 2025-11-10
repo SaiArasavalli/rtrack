@@ -179,6 +179,7 @@ export interface UserInfo {
   employee_id: string;
   employee_name: string;
   is_admin: boolean;
+  has_reportees: boolean;
 }
 
 export interface LoginResponse {

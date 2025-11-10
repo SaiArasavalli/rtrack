@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import {
   Table,
@@ -18,22 +18,17 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiClient, type ComplianceResponse, type ComplianceEmployee, type ComplianceWeek, type MonthlyComplianceResponse, type MonthlyComplianceEmployee, type MonthlyComplianceMonth, type QuarterlyComplianceResponse, type QuarterlyComplianceEmployee, type QuarterlyComplianceQuarter } from '@/lib/api';
+import { MONTH_NAMES, ITEMS_PER_PAGE } from '@/lib/constants';
 import { toast } from 'sonner';
 import { Calendar, CheckCircle2, XCircle, AlertCircle, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CalculateDialog } from '@/components/calculate-dialog';
 
-const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
 type ComplianceType = 'weekly' | 'monthly' | 'quarterly';
-
-const ITEMS_PER_PAGE = 20;
 
 export default function CompliancePage() {
   const [activeTab, setActiveTab] = useState<ComplianceType>('weekly');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [hasReportees, setHasReportees] = useState<boolean>(false);
   
   // Weekly compliance state
   const [weeklyCompliance, setWeeklyCompliance] = useState<ComplianceResponse | null>(null);
@@ -78,8 +73,10 @@ export default function CompliancePage() {
       try {
         const me = await apiClient.getCurrentUser();
         setIsAdmin(!!me.is_admin);
+        setHasReportees(!!me.has_reportees);
       } catch {
         setIsAdmin(false);
+        setHasReportees(false);
       }
     })();
   }, []);
@@ -352,41 +349,44 @@ export default function CompliancePage() {
 
                 {/* Weekly Compliance Tab */}
                 <TabsContent value="weekly" className="space-y-4 mt-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      Total: {weeklyCompliance?.total || 0} employees
-                      {weeklySearchQuery && weeklyLoading && (
-                        <span className="ml-2 text-blue-600">(searching...)</span>
-                      )}
-                      {weeklySearchQuery && !weeklyLoading && weeklyCompliance && (
-                        <span className="ml-2 text-slate-500">(filtered)</span>
-                      )}
-                    </span>
-                  </div>
+                  {hasReportees && (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        Total: {weeklyCompliance?.total || 0} employees
+                        {weeklySearchQuery && weeklyLoading && (
+                          <span className="ml-2 text-blue-600">(searching...)</span>
+                        )}
+                        {weeklySearchQuery && !weeklyLoading && weeklyCompliance && (
+                          <span className="ml-2 text-slate-500">(filtered)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Search + Filters */}
                   {(() => {
-                    const hasReportees = !weeklyCompliance?.current_employee || weeklyCompliance?.total > 0 || (weeklyCompliance?.reportees && weeklyCompliance.reportees.length > 0);
                     const hasActiveFilters = debouncedWeeklySearch.trim() || weeklyStatus !== 'All' || weeklyException !== 'All';
                     const showStatusException = hasReportees || hasActiveFilters;
+                    const showSearch = hasReportees || hasActiveFilters; // Show search if user has reportees or active filters
                     return (
-                      <div className={`mb-4 grid grid-cols-1 gap-4 ${weeklyCompliance?.current_employee && !showStatusException ? 'md:grid-cols-3' : 'md:grid-cols-5'}`}>
-                        <div className="flex flex-col gap-1">
-                          <Label htmlFor="weekly-search">Search</Label>
-                          <div className="relative h-11">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
-                            <Input
-                              id="weekly-search"
-                              type="text"
-                              placeholder="Employee ID or Name"
-                              value={weeklySearchQuery}
-                              onChange={(e) => setWeeklySearchQuery(e.target.value)}
-                              className="pl-10 h-11 w-full text-sm py-2"
-                              disabled={weeklyCompliance?.current_employee && !showStatusException}
-                            />
+                      <div className={`mb-4 grid grid-cols-1 gap-4 ${!hasReportees && !hasActiveFilters ? 'md:grid-cols-2' : showSearch ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
+                        {showSearch && (
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor="weekly-search">Search</Label>
+                            <div className="relative h-11">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                              <Input
+                                id="weekly-search"
+                                type="text"
+                                placeholder="Employee ID or Name"
+                                value={weeklySearchQuery}
+                                onChange={(e) => setWeeklySearchQuery(e.target.value)}
+                                className="pl-10 h-11 w-full text-sm py-2"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex flex-col gap-1">
                           <Label>Year</Label>
@@ -415,7 +415,7 @@ export default function CompliancePage() {
                               <SelectValue placeholder="Select month" />
                             </SelectTrigger>
                             <SelectContent>
-                              {monthNames.map((name, index) => (
+                              {MONTH_NAMES.map((name, index) => (
                                 <SelectItem key={index + 1} value={(index + 1).toString()}>
                                   {name}
                                 </SelectItem>
@@ -666,41 +666,44 @@ export default function CompliancePage() {
 
                 {/* Monthly Compliance Tab */}
                 <TabsContent value="monthly" className="space-y-4 mt-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      Total: {monthlyCompliance?.total || 0} employees
-                      {monthlySearchQuery && monthlyLoading && (
-                        <span className="ml-2 text-blue-600">(searching...)</span>
-                      )}
-                      {monthlySearchQuery && !monthlyLoading && monthlyCompliance && (
-                        <span className="ml-2 text-slate-500">(filtered)</span>
-                      )}
-                    </span>
-                  </div>
+                  {hasReportees && (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        Total: {monthlyCompliance?.total || 0} employees
+                        {monthlySearchQuery && monthlyLoading && (
+                          <span className="ml-2 text-blue-600">(searching...)</span>
+                        )}
+                        {monthlySearchQuery && !monthlyLoading && monthlyCompliance && (
+                          <span className="ml-2 text-slate-500">(filtered)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Search + Filters */}
                   {(() => {
-                    const hasReportees = !monthlyCompliance?.current_employee || monthlyCompliance?.total > 0 || (monthlyCompliance?.reportees && monthlyCompliance.reportees.length > 0);
                     const hasActiveFilters = debouncedMonthlySearch.trim() || monthlyStatus !== 'All' || monthlyException !== 'All';
                     const showStatusException = hasReportees || hasActiveFilters;
+                    const showSearch = hasReportees || hasActiveFilters; // Show search if user has reportees or active filters
                     return (
-                      <div className={`mb-4 grid grid-cols-1 gap-4 ${monthlyCompliance?.current_employee && !showStatusException ? 'md:grid-cols-2' : 'md:grid-cols-4'}`}>
-                        <div className="flex flex-col gap-1">
-                          <Label htmlFor="monthly-search">Search</Label>
-                          <div className="relative h-11">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
-                            <Input
-                              id="monthly-search"
-                              type="text"
-                              placeholder="Employee ID or Name"
-                              value={monthlySearchQuery}
-                              onChange={(e) => setMonthlySearchQuery(e.target.value)}
-                              className="pl-10 h-11 w-full text-sm py-2"
-                              disabled={monthlyCompliance?.current_employee && !showStatusException}
-                            />
+                      <div className={`mb-4 grid grid-cols-1 gap-4 ${!hasReportees && !hasActiveFilters ? 'md:grid-cols-1' : showSearch ? 'md:grid-cols-4' : 'md:grid-cols-1'}`}>
+                        {showSearch && (
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor="monthly-search">Search</Label>
+                            <div className="relative h-11">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                              <Input
+                                id="monthly-search"
+                                type="text"
+                                placeholder="Employee ID or Name"
+                                value={monthlySearchQuery}
+                                onChange={(e) => setMonthlySearchQuery(e.target.value)}
+                                className="pl-10 h-11 w-full text-sm py-2"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex flex-col gap-1">
                           <Label>Year</Label>
@@ -972,41 +975,44 @@ export default function CompliancePage() {
 
                 {/* Quarterly Compliance Tab */}
                 <TabsContent value="quarterly" className="space-y-4 mt-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      Total: {quarterlyCompliance?.total || 0} employees
-                      {quarterlySearchQuery && quarterlyLoading && (
-                        <span className="ml-2 text-blue-600">(searching...)</span>
-                      )}
-                      {quarterlySearchQuery && !quarterlyLoading && quarterlyCompliance && (
-                        <span className="ml-2 text-slate-500">(filtered)</span>
-                      )}
-                    </span>
-                  </div>
+                  {hasReportees && (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        Total: {quarterlyCompliance?.total || 0} employees
+                        {quarterlySearchQuery && quarterlyLoading && (
+                          <span className="ml-2 text-blue-600">(searching...)</span>
+                        )}
+                        {quarterlySearchQuery && !quarterlyLoading && quarterlyCompliance && (
+                          <span className="ml-2 text-slate-500">(filtered)</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Search + Filters */}
                   {(() => {
-                    const hasReportees = !quarterlyCompliance?.current_employee || quarterlyCompliance?.total > 0 || (quarterlyCompliance?.reportees && quarterlyCompliance.reportees.length > 0);
                     const hasActiveFilters = debouncedQuarterlySearch.trim() || quarterlyStatus !== 'All' || quarterlyException !== 'All';
                     const showStatusException = hasReportees || hasActiveFilters;
+                    const showSearch = hasReportees || hasActiveFilters; // Show search if user has reportees or active filters
                     return (
-                      <div className={`mb-4 grid grid-cols-1 gap-4 ${quarterlyCompliance?.current_employee && !showStatusException ? 'md:grid-cols-2' : 'md:grid-cols-4'}`}>
-                        <div className="flex flex-col gap-1">
-                          <Label htmlFor="quarterly-search">Search</Label>
-                          <div className="relative h-11">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
-                            <Input
-                              id="quarterly-search"
-                              type="text"
-                              placeholder="Employee ID or Name"
-                              value={quarterlySearchQuery}
-                              onChange={(e) => setQuarterlySearchQuery(e.target.value)}
-                              className="pl-10 h-11 w-full text-sm py-2"
-                              disabled={quarterlyCompliance?.current_employee && !showStatusException}
-                            />
+                      <div className={`mb-4 grid grid-cols-1 gap-4 ${!hasReportees && !hasActiveFilters ? 'md:grid-cols-1' : showSearch ? 'md:grid-cols-4' : 'md:grid-cols-1'}`}>
+                        {showSearch && (
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor="quarterly-search">Search</Label>
+                            <div className="relative h-11">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
+                              <Input
+                                id="quarterly-search"
+                                type="text"
+                                placeholder="Employee ID or Name"
+                                value={quarterlySearchQuery}
+                                onChange={(e) => setQuarterlySearchQuery(e.target.value)}
+                                className="pl-10 h-11 w-full text-sm py-2"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="flex flex-col gap-1">
                           <Label>Year</Label>

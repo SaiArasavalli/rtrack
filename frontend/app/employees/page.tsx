@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminRoute } from '@/components/admin-route';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { getCachedAdminStatus } from '@/lib/admin-cache';
 const ITEMS_PER_PAGE = 20;
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -216,7 +218,7 @@ export default function EmployeesPage() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => window.location.href = '/upload'} className="h-11 border-2">
+                  <Button variant="outline" onClick={() => router.push('/upload')} className="h-11 border-2">
                     <Upload className="mr-2 h-4 w-4" />
                     Upload Excel
                   </Button>
@@ -320,8 +322,8 @@ export default function EmployeesPage() {
                         <TableRow>
                           <TableHead>Employee ID</TableHead>
                           <TableHead>Name</TableHead>
-                          <TableHead>Reporting Manager Name</TableHead>
-                          <TableHead>Vertical Head Name</TableHead>
+                          <TableHead>Manager</TableHead>
+                          <TableHead>Vertical Head</TableHead>
                           <TableHead>Vertical</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Exception</TableHead>

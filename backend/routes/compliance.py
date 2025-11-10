@@ -14,11 +14,9 @@ from backend.services.compliance_service import (
     calculate_monthly_compliance,
     calculate_quarterly_compliance
 )
+from backend.config.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/compliance", tags=["compliance"])
-
-DEFAULT_PAGE_SIZE = 50
-MAX_PAGE_SIZE = 200
 
 
 @router.get("")

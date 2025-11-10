@@ -8,11 +8,9 @@ from backend.database import get_session
 from backend.auth import get_current_employee, get_current_admin_employee
 from backend.services.attendance_service import clean_attendance_excel
 from backend.services.compliance_service import calculate_weekly_compliance
+from backend.config.constants import ATTENDANCE_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE, ATTENDANCE_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
-
-DEFAULT_PAGE_SIZE = 100
-MAX_PAGE_SIZE = 500
 
 
 @router.post("/upload")

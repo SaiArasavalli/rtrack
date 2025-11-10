@@ -56,19 +56,30 @@ def login(login_data: LoginRequest, session: Session = Depends(get_session)):
 
 @router.get("/me")
 async def get_current_user_info(
-    current_employee: Employee = Depends(get_current_employee)
+    current_employee: Employee = Depends(get_current_employee),
+    session: Session = Depends(get_session)
 ):
     """Returns current authenticated user information."""
     if current_employee.employee_id == HARDCODED_ADMIN_EMPLOYEE_ID:
         return {
             "employee_id": HARDCODED_ADMIN_EMPLOYEE_ID,
             "employee_name": "System Admin",
-            "is_admin": True
+            "is_admin": True,
+            "has_reportees": True  # Admin always has reportees (all employees)
         }
+    
+    # Check if employee has reportees (employees reporting to them or in their vertical)
+    reportee_statement = select(Employee.employee_id).where(
+        (Employee.reporting_manager_id == current_employee.employee_id) |
+        (Employee.vertical_head_id == current_employee.employee_id)
+    )
+    reportees = session.exec(reportee_statement).all()
+    has_reportees = len(reportees) > 0
     
     return {
         "employee_id": current_employee.employee_id,
         "employee_name": current_employee.employee_name,
-        "is_admin": is_admin(current_employee.employee_id)
+        "is_admin": is_admin(current_employee.employee_id),
+        "has_reportees": has_reportees
     }
 

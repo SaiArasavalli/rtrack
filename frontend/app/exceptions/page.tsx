@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminRoute } from '@/components/admin-route';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -15,6 +13,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { apiClient, type Exception } from '@/lib/api';
 import { toast } from 'sonner';
 import { ExceptionDialog } from '@/components/exception-dialog';
@@ -25,6 +31,7 @@ export default function ExceptionsPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingException, setEditingException] = useState<Exception | null>(null);
+  const [isPopulateDialogOpen, setIsPopulateDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchExceptions();
@@ -71,8 +78,8 @@ export default function ExceptionsPage() {
   };
 
   const handlePopulate = async () => {
-    if (!confirm('This will populate exceptions from existing employee records. Continue?')) return;
-
+    setIsPopulateDialogOpen(false);
+    
     try {
       const result = await apiClient.populateExceptions();
       toast.success(
@@ -102,7 +109,7 @@ export default function ExceptionsPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button 
-                      onClick={handlePopulate}
+                      onClick={() => setIsPopulateDialogOpen(true)}
                       variant="outline"
                       className="border-2 h-11"
                     >
@@ -189,6 +196,30 @@ export default function ExceptionsPage() {
               onClose={handleDialogClose}
               exception={editingException}
             />
+            <Dialog open={isPopulateDialogOpen} onOpenChange={setIsPopulateDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Populate Exceptions from Employees</DialogTitle>
+                  <DialogDescription>
+                    This will populate exceptions from existing employee records. Continue?
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsPopulateDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handlePopulate}
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                  >
+                    Continue
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </AdminRoute>

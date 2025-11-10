@@ -6,12 +6,12 @@ from backend.models import Exception, ExceptionCreate, ExceptionUpdate, Employee
 from backend.database import get_session
 from backend.auth import get_current_admin_employee, get_current_employee
 
+from backend.config.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+
 router = APIRouter(prefix="/exceptions", tags=["exceptions"])
 
 EXCEPTION_PATTERN = re.compile(r'^(weekly|monthly|quarterly)_(\d+)_day$')
 SPECIAL_EXCEPTIONS = {'default', 'other'}
-DEFAULT_PAGE_SIZE = 50
-MAX_PAGE_SIZE = 200
 
 
 def validate_exception_format(name: str) -> bool:

@@ -9,11 +9,9 @@ from backend.models import Employee, EmployeeCreate, EmployeeUpdate
 from backend.database import get_session
 from backend.auth import get_current_admin_employee
 from backend.utils import to_snake_case
+from backend.config.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/employees", tags=["employees"])
-
-DEFAULT_PAGE_SIZE = 50
-MAX_PAGE_SIZE = 200
 
 
 @router.get("")
