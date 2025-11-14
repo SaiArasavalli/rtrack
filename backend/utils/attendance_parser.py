@@ -1,7 +1,7 @@
 """Attendance Excel file parser."""
 
 import pandas as pd
-from datetime import date
+from datetime import date, datetime, time as dt_time
 from typing import List, Dict, Optional
 from io import BytesIO
 
@@ -37,6 +37,64 @@ def hhmm_to_hours(hhmm_str: Optional[str]) -> Optional[float]:
     return None
 
 
+def calculate_hours_from_swipes(swipe_in: str, swipe_out: str, record_date: date) -> Optional[float]:
+    """Calculates hours worked from swipe_in and swipe_out timestamps.
+    
+    Handles cases where:
+    - Both swipes are on the same day
+    - Swipe_in is today and swipe_out is next day (overnight shift)
+    """
+    try:
+        # Try parsing as datetime objects (with date and time)
+        swipe_in_dt = pd.to_datetime(swipe_in, errors='coerce')
+        swipe_out_dt = pd.to_datetime(swipe_out, errors='coerce')
+        
+        if pd.isna(swipe_in_dt) or pd.isna(swipe_out_dt):
+            # If datetime parsing fails, try parsing as time strings and combine with date
+            try:
+                # Parse as time (HH:MM:SS or HH:MM)
+                swipe_in_parts = swipe_in.strip().split(':')
+                swipe_out_parts = swipe_out.strip().split(':')
+                
+                if len(swipe_in_parts) >= 2 and len(swipe_out_parts) >= 2:
+                    # Parse hours and minutes
+                    swipe_in_hour = int(swipe_in_parts[0])
+                    swipe_in_min = int(swipe_in_parts[1])
+                    swipe_in_sec = int(swipe_in_parts[2]) if len(swipe_in_parts) >= 3 else 0
+                    
+                    swipe_out_hour = int(swipe_out_parts[0])
+                    swipe_out_min = int(swipe_out_parts[1])
+                    swipe_out_sec = int(swipe_out_parts[2]) if len(swipe_out_parts) >= 3 else 0
+                    
+                    swipe_in_time = dt_time(swipe_in_hour, swipe_in_min, swipe_in_sec)
+                    swipe_out_time = dt_time(swipe_out_hour, swipe_out_min, swipe_out_sec)
+                    
+                    # Combine time with record date
+                    swipe_in_dt = pd.Timestamp.combine(record_date, swipe_in_time)
+                    swipe_out_dt = pd.Timestamp.combine(record_date, swipe_out_time)
+                    
+                    # If swipe_out time is earlier than swipe_in time, assume next day
+                    if swipe_out_dt < swipe_in_dt:
+                        swipe_out_dt = swipe_out_dt + pd.Timedelta(days=1)
+                else:
+                    return None
+            except Exception:
+                return None
+        
+        # Calculate difference in hours
+        time_diff = swipe_out_dt - swipe_in_dt
+        total_hours = time_diff.total_seconds() / 3600.0
+        
+        # Ensure reasonable hours (between 0 and 24)
+        if 0 <= total_hours <= 24:
+            return round(total_hours, 2)
+        else:
+            # If more than 24 hours, might be data error, but still return it
+            return round(total_hours, 2)
+    except Exception:
+        return None
+
+
 def clean_attendance_data(df: pd.DataFrame) -> pd.DataFrame:
     """Cleans and normalizes attendance Excel data structure."""
     df = df.dropna(how="all").dropna(how="all", axis=1).reset_index(drop=True)
@@ -68,7 +126,25 @@ def clean_attendance_data(df: pd.DataFrame) -> pd.DataFrame:
     })[["employee_id", "swipe_in", "swipe_out", "workhrs"]].copy()
     
     df["hours_worked"] = df["workhrs"].apply(hhmm_to_hours)
-    df["is_present"] = (df["swipe_in"].notna() & df["swipe_out"].notna()).astype(int)
+    
+    # Determine presence: absent only if BOTH swipe_in and swipe_out are missing
+    # Present if at least one swipe exists (forgot to swipe one)
+    has_swipe_in = df["swipe_in"].notna()
+    has_swipe_out = df["swipe_out"].notna()
+    df["is_present"] = (has_swipe_in | has_swipe_out).astype(int)
+    
+    # Handle missing hours_worked based on swipe data:
+    # 1. If only one swipe exists (forgot to swipe the other) → default to 6 hours
+    # 2. If both swipes exist but work hours missing → calculate from timestamps
+    present_mask = df["is_present"] == 1
+    missing_hours_mask = df["hours_worked"].isna()
+    
+    # Case 1: Only one swipe exists → 6 hours
+    only_one_swipe = (has_swipe_in & ~has_swipe_out) | (~has_swipe_in & has_swipe_out)
+    df.loc[present_mask & missing_hours_mask & only_one_swipe, "hours_worked"] = 6.0
+    
+    # Case 2: Both swipes exist but work hours missing → calculate from timestamps
+    # We'll process this after date column is created
     
     date_col = pd.to_datetime(df["employee_id"], errors="coerce")
     df["date"] = date_col.ffill()
@@ -77,6 +153,25 @@ def clean_attendance_data(df: pd.DataFrame) -> pd.DataFrame:
     df["employee_id"] = df["employee_id"].str.upper().apply(
         lambda x: x if x.startswith("GCC") else f"GCC{x}"
     )
+    
+    # Now calculate hours from swipes for records with both swipes but missing work hours
+    both_swipes_exist = df["swipe_in"].notna() & df["swipe_out"].notna()
+    both_swipes_missing_hours = (df["is_present"] == 1) & df["hours_worked"].isna() & both_swipes_exist
+    
+    for idx in df[both_swipes_missing_hours].index:
+        swipe_in_val = str(df.loc[idx, "swipe_in"]).strip()
+        swipe_out_val = str(df.loc[idx, "swipe_out"]).strip()
+        record_date = df.loc[idx, "date"]
+        
+        # Convert pandas Timestamp to Python date if needed
+        if isinstance(record_date, pd.Timestamp):
+            record_date = record_date.date()
+        elif hasattr(record_date, 'date'):
+            record_date = record_date.date()
+        
+        calculated_hours = calculate_hours_from_swipes(swipe_in_val, swipe_out_val, record_date)
+        if calculated_hours is not None:
+            df.loc[idx, "hours_worked"] = calculated_hours
     
     df["week_start"] = df["date"].dt.to_period("W").apply(lambda p: p.start_time.date())
     df["week_end"] = df["week_start"].apply(lambda d: (pd.Timestamp(d) + pd.Timedelta(days=4)).date())

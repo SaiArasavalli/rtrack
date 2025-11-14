@@ -56,17 +56,14 @@ export function Navbar() {
     { href: '/employees', label: 'Employees', icon: Users },
     { href: '/attendance', label: 'Attendance', icon: Calendar },
     { href: '/exceptions', label: 'Exceptions', icon: AlertCircle },
+    { href: '/compliance', label: 'Compliance', icon: CheckCircle },
   ];
 
-  // Compliance link (visible to all authenticated users)
-  const complianceLink = { href: '/compliance', label: 'Compliance', icon: CheckCircle };
-
   // Combine links based on role
+  // Normal employees don't need nav links since they're always on the compliance page
   const navLinks = isAdmin === true 
-    ? [...adminLinks, complianceLink]
-    : isAdmin === false
-    ? [complianceLink]
-    : []; // Empty while loading
+    ? adminLinks
+    : []; // Empty for non-admin users
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 shadow-sm">

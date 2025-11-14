@@ -369,10 +369,11 @@ export default function CompliancePage() {
                     const hasActiveFilters = debouncedWeeklySearch.trim() || weeklyStatus !== 'All' || weeklyException !== 'All';
                     const showStatusException = hasReportees || hasActiveFilters;
                     const showSearch = hasReportees || hasActiveFilters; // Show search if user has reportees or active filters
+                    const isCompactLayout = !hasReportees && !hasActiveFilters;
                     return (
-                      <div className={`mb-4 grid grid-cols-1 gap-4 ${!hasReportees && !hasActiveFilters ? 'md:grid-cols-2' : showSearch ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
+                      <div className={`mb-4 ${isCompactLayout ? 'flex flex-wrap gap-4' : 'grid grid-cols-1 gap-4'} ${!isCompactLayout && (showSearch ? 'md:grid-cols-5' : 'md:grid-cols-3')}`}>
                         {showSearch && (
-                          <div className="flex flex-col gap-1">
+                          <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-auto' : ''}`}>
                             <Label htmlFor="weekly-search">Search</Label>
                             <div className="relative h-11">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
@@ -388,7 +389,7 @@ export default function CompliancePage() {
                           </div>
                         )}
 
-                        <div className="flex flex-col gap-1">
+                        <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-48' : ''}`}>
                           <Label>Year</Label>
                           <Select
                             value={weeklyYear?.toString() || ''}
@@ -405,7 +406,7 @@ export default function CompliancePage() {
                           </Select>
                         </div>
 
-                        <div className="flex flex-col gap-1">
+                        <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-48' : ''}`}>
                           <Label>Month</Label>
                           <Select
                             value={weeklyMonth?.toString() || ''}
@@ -686,10 +687,11 @@ export default function CompliancePage() {
                     const hasActiveFilters = debouncedMonthlySearch.trim() || monthlyStatus !== 'All' || monthlyException !== 'All';
                     const showStatusException = hasReportees || hasActiveFilters;
                     const showSearch = hasReportees || hasActiveFilters; // Show search if user has reportees or active filters
+                    const isCompactLayout = !hasReportees && !hasActiveFilters;
                     return (
-                      <div className={`mb-4 grid grid-cols-1 gap-4 ${!hasReportees && !hasActiveFilters ? 'md:grid-cols-1' : showSearch ? 'md:grid-cols-4' : 'md:grid-cols-1'}`}>
+                      <div className={`mb-4 ${isCompactLayout ? 'flex flex-wrap gap-4' : 'grid grid-cols-1 gap-4'} ${!isCompactLayout && (showSearch ? 'md:grid-cols-4' : 'md:grid-cols-1')}`}>
                         {showSearch && (
-                          <div className="flex flex-col gap-1">
+                          <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-auto' : ''}`}>
                             <Label htmlFor="monthly-search">Search</Label>
                             <div className="relative h-11">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
@@ -705,7 +707,7 @@ export default function CompliancePage() {
                           </div>
                         )}
 
-                        <div className="flex flex-col gap-1">
+                        <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-48' : ''}`}>
                           <Label>Year</Label>
                           <Select
                             value={monthlyYear?.toString() || ''}
@@ -995,10 +997,11 @@ export default function CompliancePage() {
                     const hasActiveFilters = debouncedQuarterlySearch.trim() || quarterlyStatus !== 'All' || quarterlyException !== 'All';
                     const showStatusException = hasReportees || hasActiveFilters;
                     const showSearch = hasReportees || hasActiveFilters; // Show search if user has reportees or active filters
+                    const isCompactLayout = !hasReportees && !hasActiveFilters;
                     return (
-                      <div className={`mb-4 grid grid-cols-1 gap-4 ${!hasReportees && !hasActiveFilters ? 'md:grid-cols-1' : showSearch ? 'md:grid-cols-4' : 'md:grid-cols-1'}`}>
+                      <div className={`mb-4 ${isCompactLayout ? 'flex flex-wrap gap-4' : 'grid grid-cols-1 gap-4'} ${!isCompactLayout && (showSearch ? 'md:grid-cols-4' : 'md:grid-cols-1')}`}>
                         {showSearch && (
-                          <div className="flex flex-col gap-1">
+                          <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-auto' : ''}`}>
                             <Label htmlFor="quarterly-search">Search</Label>
                             <div className="relative h-11">
                               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4 z-10" />
@@ -1014,7 +1017,7 @@ export default function CompliancePage() {
                           </div>
                         )}
 
-                        <div className="flex flex-col gap-1">
+                        <div className={`flex flex-col gap-1 ${isCompactLayout ? 'w-full md:w-48' : ''}`}>
                           <Label>Year</Label>
                           <Select
                             value={quarterlyYear?.toString() || ''}
