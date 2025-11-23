@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import JSONResponse
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select, func, delete
 import pandas as pd
 import traceback
 from backend.models import Employee, Attendance
@@ -174,6 +174,35 @@ async def get_attendance(
         "total_pages": (total_count + page_size - 1) // page_size if total_count > 0 else 0,
         "attendances": [att.model_dump() for att in attendances]
     }
+
+
+@router.delete("/all")
+async def delete_all_attendance(
+    session: Session = Depends(get_session),
+    current_employee: Employee = Depends(get_current_admin_employee)
+):
+    """Delete all attendance records from the database. Admin only."""
+    try:
+        # Count records before deletion
+        total_count = session.exec(select(func.count(Attendance.id))).one()
+        
+        if total_count == 0:
+            return {
+                "message": "No attendance records to delete",
+                "deleted_count": 0
+            }
+        
+        # Delete all attendance records
+        session.exec(delete(Attendance))
+        session.commit()
+        
+        return {
+            "message": f"Successfully deleted all attendance records ({total_count} records)",
+            "deleted_count": total_count
+        }
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting attendance records: {str(e)}")
 
 
 

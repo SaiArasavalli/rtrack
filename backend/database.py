@@ -7,7 +7,7 @@ from backend.config import settings
 from backend.utils.logger import logger
 from backend.models import (
     Employee, Attendance, WeeklyCompliance, 
-    MonthlyCompliance, QuarterlyCompliance, Exception
+    MonthlyCompliance, QuarterlyCompliance
 )
 
 # Create engine with connection pooling for better performance

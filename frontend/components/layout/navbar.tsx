@@ -73,7 +73,11 @@ export function Navbar() {
             <Sparkles className="h-6 w-6 text-blue-600" />
             <div className="absolute inset-0 bg-blue-600/20 blur-lg rounded-full"></div>
           </div>
-          <Link href="/">
+          <Link 
+            href="/"
+            className="cursor-pointer"
+            prefetch={true}
+          >
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               rTrack
             </h1>
@@ -85,6 +89,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={true}
                   className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     pathname === link.href
                       ? 'bg-blue-50 border border-blue-200/50 text-blue-700'

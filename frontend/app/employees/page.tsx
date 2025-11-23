@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { apiClient, type Employee } from '@/lib/api';
 import { toast } from 'sonner';
 import { EmployeeDialog } from '@/components/employee-dialog';
+import { ConfirmationDialog } from '@/components/confirmation-dialog';
 import { Upload, Plus, Trash2, Edit, Search, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { getCachedAdminStatus } from '@/lib/admin-cache';
 
@@ -33,6 +34,8 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [verticalFilter, setVerticalFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -150,11 +153,16 @@ export default function EmployeesPage() {
     fetchEmployees(1);
   }, [debouncedSearchQuery, verticalFilter, statusFilter, exceptionFilter]);
 
-  const handleDelete = async (employeeId: string) => {
-    if (!confirm('Are you sure you want to delete this employee?')) return;
+  const handleDeleteClick = (employeeId: string) => {
+    setEmployeeToDelete(employeeId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!employeeToDelete) return;
 
     try {
-      await apiClient.deleteEmployee(employeeId);
+      await apiClient.deleteEmployee(employeeToDelete);
       toast.success('Employee deleted successfully');
       fetchEmployees(currentPage);
       // Refresh filter options
@@ -167,6 +175,7 @@ export default function EmployeesPage() {
         }
       }
       setAllEmployees(allEmps);
+      setEmployeeToDelete(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete employee');
     }
@@ -362,7 +371,7 @@ export default function EmployeesPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDelete(employee.employee_id)}
+                                  onClick={() => handleDeleteClick(employee.employee_id)}
                                 >
                                   <Trash2 className="h-4 w-4 text-red-600" />
                                 </Button>
@@ -422,6 +431,16 @@ export default function EmployeesPage() {
           open={isDialogOpen}
           onClose={handleDialogClose}
           employee={editingEmployee}
+        />
+        <ConfirmationDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Employee"
+          description="Are you sure you want to delete this employee? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="destructive"
         />
       </div>
       </AdminRoute>

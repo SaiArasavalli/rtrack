@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
@@ -15,8 +16,12 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+interface ErrorBoundaryWithRouterProps extends Props {
+  router: ReturnType<typeof useRouter>;
+}
+
+class ErrorBoundaryInner extends Component<ErrorBoundaryWithRouterProps, State> {
+  constructor(props: ErrorBoundaryWithRouterProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -36,6 +41,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleReset = () => {
     this.setState({ hasError: false, error: null });
+  };
+
+  handleGoHome = () => {
+    this.props.router.push('/');
   };
 
   render() {
@@ -68,7 +77,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Button onClick={this.handleReset} variant="default">
                   Try Again
                 </Button>
-                <Button onClick={() => window.location.href = '/'} variant="outline">
+                <Button onClick={this.handleGoHome} variant="outline">
                   Go Home
                 </Button>
               </div>
@@ -80,5 +89,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
+}
+
+export function ErrorBoundary(props: Props) {
+  const router = useRouter();
+  return <ErrorBoundaryInner {...props} router={router} />;
 }
 

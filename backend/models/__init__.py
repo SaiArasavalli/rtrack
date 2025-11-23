@@ -1,5 +1,7 @@
 """Database models for the application."""
 
+from __future__ import annotations
+
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime, date
@@ -8,7 +10,7 @@ from datetime import datetime, date
 class Employee(SQLModel, table=True):
     """Employee model with snake_case column names."""
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     employee_id: str
     employee_name: str
     reporting_manager_id: Optional[str] = None
@@ -65,7 +67,7 @@ class Token(SQLModel):
 class Attendance(SQLModel, table=True):
     """Attendance model for employee swipe records."""
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     employee_id: str
     employee_name: str
     swipe_in: Optional[str] = None
@@ -86,7 +88,7 @@ class Attendance(SQLModel, table=True):
 class WeeklyCompliance(SQLModel, table=True):
     """Weekly compliance model for employee compliance tracking."""
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     employee_id: str
     employee_name: str
     reporting_manager_id: Optional[str] = None
@@ -111,7 +113,7 @@ class WeeklyCompliance(SQLModel, table=True):
 class MonthlyCompliance(SQLModel, table=True):
     """Monthly compliance model for employee compliance tracking."""
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     employee_id: str
     employee_name: str
     reporting_manager_id: Optional[str] = None
@@ -137,7 +139,7 @@ class MonthlyCompliance(SQLModel, table=True):
 class QuarterlyCompliance(SQLModel, table=True):
     """Quarterly compliance model for employee compliance tracking."""
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     employee_id: str
     employee_name: str
     reporting_manager_id: Optional[str] = None
@@ -169,7 +171,7 @@ class Exception(SQLModel, table=True):
     Example: weekly_2_day, monthly_4_day, quarterly_6_day
     """
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)

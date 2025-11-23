@@ -255,10 +255,7 @@ class ApiClient {
       if (response.status === 401) {
         // Clear token and admin cache
         this.logout();
-        // Redirect to login page
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        // Throw error - let components handle navigation
         throw new Error('Session expired. Please login again.');
       }
       
@@ -353,9 +350,7 @@ class ApiClient {
       // Handle 401 Unauthorized - token expired or invalid
       if (response.status === 401) {
         this.logout();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        // Throw error - let components handle navigation
         throw new Error('Session expired. Please login again.');
       }
       
@@ -404,9 +399,7 @@ class ApiClient {
       // Handle 401 Unauthorized - token expired or invalid
       if (response.status === 401) {
         this.logout();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        // Throw error - let components handle navigation
         throw new Error('Session expired. Please login again.');
       }
       
@@ -417,6 +410,12 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  async deleteAllAttendance(): Promise<{ message: string; deleted_count: number }> {
+    return this.request<{ message: string; deleted_count: number }>('/attendance/all', {
+      method: 'DELETE',
+    });
   }
 
   // Compliance

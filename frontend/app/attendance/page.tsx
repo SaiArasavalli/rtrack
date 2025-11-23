@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Calendar, Clock, Users, FileText } from 'lucide-react';
+import { ConfirmationDialog } from '@/components/confirmation-dialog';
+import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Calendar, Clock, Users, FileText, Trash2 } from 'lucide-react';
 
 export default function AttendancePage() {
   const [file, setFile] = useState<File | null>(null);
@@ -32,6 +33,8 @@ export default function AttendancePage() {
     message?: string;
   } | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -143,6 +146,21 @@ export default function AttendancePage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    setDeleting(true);
+    try {
+      const result = await apiClient.deleteAllAttendance();
+      toast.success(result.message);
+      // Reload last upload info after deletion
+      await loadLastUploadInfo();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete attendance records');
+    } finally {
+      setDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <AdminRoute>
@@ -150,15 +168,29 @@ export default function AttendancePage() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
             <Card className="max-w-2xl mx-auto border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
               <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <Calendar className="h-8 w-8 text-blue-600" />
-                  <CardTitle className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
-                    Attendance
-                  </CardTitle>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <Calendar className="h-8 w-8 text-blue-600" />
+                      <CardTitle className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                        Attendance
+                      </CardTitle>
+                    </div>
+                    <CardDescription className="mt-2 text-base">
+                      Upload a weekly attendance Excel file to add attendance records to the database
+                    </CardDescription>
+                  </div>
+                  {lastUploadInfo?.has_upload && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      className="h-10"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete All
+                    </Button>
+                  )}
                 </div>
-                <CardDescription className="mt-2 text-base">
-                  Upload a weekly attendance Excel file to add attendance records to the database
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {!loadingInfo && lastUploadInfo && (
@@ -344,6 +376,16 @@ export default function AttendancePage() {
             </Card>
           </div>
         </div>
+        <ConfirmationDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          onConfirm={handleDeleteAll}
+          title="Delete All Attendance Records"
+          description="Are you sure you want to delete all attendance records? This action cannot be undone and will permanently remove all attendance data from the database."
+          confirmText="Delete All"
+          cancelText="Cancel"
+          variant="destructive"
+        />
       </AdminRoute>
     </ProtectedRoute>
   );
